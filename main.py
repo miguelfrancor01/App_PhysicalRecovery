@@ -1,11 +1,14 @@
 import torch
 import cv2
 import numpy as np
+from PIL import Image
 
 from src.utils import load_image, save_image
 from src.detection_model import load_detection_model, detect_persons
 from src.pose_model import load_pose_model, estimate_pose, print_pose_results
 from src.draw_pose import draw_pose
+from src.camera_capture import capture_image_from_camera
+
 
 
 def main():
@@ -16,7 +19,14 @@ def main():
     image_path = "images/person.jpg"
     output_path = "outputs/result.jpg"
 
-    image = load_image(image_path)
+    #image = load_image(image_path)
+    image = capture_image_from_camera()
+    image_rgb=cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # Convert numpy -> PIL
+    image = Image.fromarray(image_rgb)
+
+    
     image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
     # -------- HUMAN DETECTION --------

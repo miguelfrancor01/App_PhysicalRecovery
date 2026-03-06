@@ -2,20 +2,10 @@ import cv2
 
 
 # -------------------------------
-# BODY PART GROUPS (keypoints)
+# SKELETON CONNECTIONS (COCO-17 reference)
 # -------------------------------
 
-HEAD = [0, 1, 2, 3, 4]
-ARMS = [5, 6, 7, 8, 9, 10]
-LEGS = [11, 12, 13, 14, 15, 16]
-TORSO = [5, 6, 11, 12]
-
-
-# -------------------------------
-# SKELETON CONNECTIONS
-# -------------------------------
-
-SKELETON_CONNECTIONS = {
+BASE_SKELETON = {
 
     "head": [
         (0, 1), (0, 2), (1, 3), (2, 4)
@@ -42,16 +32,52 @@ SKELETON_CONNECTIONS = {
 
 
 # -------------------------------
-# COLORS (BGR for OpenCV)
+# COLORS (BGR OpenCV)
 # -------------------------------
 
 COLORS = {
 
-    "head": (0, 255, 255),     # yellow
-    "arms": (255, 0, 0),       # blue
-    "torso": (0, 165, 255),    # orange
-    "legs": (0, 255, 0),       # green
+    "head": (0, 255, 255),   # yellow
+    "arms": (255, 0, 0),     # blue
+    "torso": (0, 165, 255),  # orange
+    "legs": (0, 255, 0),     # green
 }
+
+
+# -------------------------------
+# JOINT GROUP DETECTION
+# -------------------------------
+
+def get_body_groups(num_joints):
+
+    groups = {
+        "head": [i for i in range(0, min(5, num_joints))],
+        "arms": [i for i in range(5, min(11, num_joints))],
+        "torso": [i for i in range(5, min(13, num_joints))],
+        "legs": [i for i in range(11, min(17, num_joints))]
+    }
+
+    return groups
+
+
+# -------------------------------
+# FILTER VALID CONNECTIONS
+# -------------------------------
+
+def get_valid_connections(num_joints):
+
+    valid = {}
+
+    for group, connections in BASE_SKELETON.items():
+
+        valid[group] = []
+
+        for a, b in connections:
+
+            if a < num_joints and b < num_joints:
+                valid[group].append((a, b))
+
+    return valid
 
 
 # -------------------------------
@@ -60,7 +86,15 @@ COLORS = {
 
 def draw_pose(image, keypoints, scores, threshold=0.3):
 
+    num_joints = len(keypoints)
+
+    body_groups = get_body_groups(num_joints)
+    skeleton = get_valid_connections(num_joints)
+
+    # -------------------------------
     # Draw keypoints
+    # -------------------------------
+
     for i, (kp, score) in enumerate(zip(keypoints, scores)):
 
         if score < threshold:
@@ -68,23 +102,20 @@ def draw_pose(image, keypoints, scores, threshold=0.3):
 
         x, y = int(kp[0]), int(kp[1])
 
-        # Determine color by body group
-        if i in HEAD:
-            color = COLORS["head"]
+        color = COLORS["torso"]
 
-        elif i in ARMS:
-            color = COLORS["arms"]
-
-        elif i in LEGS:
-            color = COLORS["legs"]
-
-        else:
-            color = COLORS["torso"]
+        for group, joints in body_groups.items():
+            if i in joints:
+                color = COLORS[group]
+                break
 
         cv2.circle(image, (x, y), 4, color, -1)
 
+    # -------------------------------
     # Draw skeleton connections
-    for group, connections in SKELETON_CONNECTIONS.items():
+    # -------------------------------
+
+    for group, connections in skeleton.items():
 
         color = COLORS[group]
 
