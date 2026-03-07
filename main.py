@@ -1,13 +1,14 @@
 import torch
 import cv2
-import numpy as np
-from PIL import Image
 import time
+from PIL import Image
 
-from src.utils import save_image
-from src.detection_model import load_detection_model, detect_persons
-from src.pose_model import load_pose_model, estimate_pose
-from src.draw_pose import draw_pose
+from src.pose_module.model_loader import load_models
+from src.pose_module.detector import detect_persons
+from src.pose_module.pose_estimator import estimate_pose
+from src.pose_module.visualizer import draw_pose
+from src.report_module.session_data import SessionData
+from src.report_module.report_generator import generate_report
 
 
 PROCESS_EVERY_N_FRAMES = 3
@@ -15,49 +16,102 @@ PROCESS_EVERY_N_FRAMES = 3
 
 def main():
 
+    # =================================
+    # DEVICE CONFIGURATION
+    # =================================
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    print("\n=================================")
+    print("Initializing Pose Estimation System")
+    print("=================================")
+
     print(f"Using device: {device}")
 
-    # -------- Se cargan los modelos --------
-    print("Loading detection model...")
-    det_processor, det_model = load_detection_model(device)
+    if device == "cuda":
+        print(f"GPU detected: {torch.cuda.get_device_name(0)}")
 
-    print("Loading pose model...")
-    pose_processor, pose_model = load_pose_model(device)
+    print("=================================\n")
 
-    print("Models loaded. Opening camera...")
+    # =================================
+    # LOAD MODELS
+    # =================================
 
-    # -------- incializar la camara --------
-    cap = cv2.VideoCapture(0)
+    print("Loading AI models...")
+
+    print("-> Loading detection model (RT-DETR)")
+    print("-> Loading pose estimation model (VitPose)")
+
+    det_processor, det_model, pose_processor, pose_model = load_models(device)
+
+    print("Models loaded successfully.\n")
+
+    # =================================
+    # CREATE SESSION DATA
+    # =================================
+
+    print("Initializing session data...\n")
+
+    session = SessionData()
+
+    # =================================
+    # OPEN VIDEO SOURCE
+    # =================================
+
+    print("Opening video source...")
+
+    cap = cv2.VideoCapture("videos/ejercicio1.mp4")
 
     if not cap.isOpened():
-        raise RuntimeError("Cannot open camera")
+        raise RuntimeError("Cannot open video file")
 
-    print("Camera opened. Press Q to quit.")
+    print("Video opened successfully.")
+    print("Controls:")
+    print("   Q → Quit program")
+    print("   R → Generate report\n")
+
+    # =================================
+    # VARIABLES
+    # =================================
 
     frame_count = 0
     last_pose_results = []
+
     fps = 0
     fps_timer = time.time()
+
+    print("Starting main processing loop...\n")
+
+    # =================================
+    # MAIN LOOP
+    # =================================
 
     while True:
 
         ret, frame = cap.read()
 
         if not ret:
-            print("Failed to read frame.")
+            print("End of video reached.")
             break
 
         frame_count += 1
 
-        # -------- procesamiento cada x frames --------
+        # =================================
+        # RUN AI EVERY N FRAMES
+        # =================================
+
         if frame_count % PROCESS_EVERY_N_FRAMES == 0:
 
-            # Convertir BGR -> RGB -> PIL
+            # Convert BGR → RGB
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Convert RGB → PIL
             image_pil = Image.fromarray(image_rgb)
 
-            # Detectar persona
+            # -----------------------------
+            # PERSON DETECTION
+            # -----------------------------
+
             person_boxes = detect_persons(
                 image_pil,
                 det_processor,
@@ -65,8 +119,12 @@ def main():
                 device
             )
 
-            # Estimatar pose
+            # -----------------------------
+            # POSE ESTIMATION
+            # -----------------------------
+
             if len(person_boxes) > 0:
+
                 pose_results = estimate_pose(
                     image_pil,
                     person_boxes,
@@ -74,25 +132,57 @@ def main():
                     pose_model,
                     device
                 )
+
                 last_pose_results = pose_results
+
             else:
+
                 last_pose_results = []
 
-        # -------- dibujar --------
+        # =================================
+        # DRAW POSE
+        # =================================
+
         display_frame = frame.copy()
 
-        for person_pose in last_pose_results:
+        for i, person_pose in enumerate(last_pose_results):
+
             keypoints = person_pose["keypoints"]
             scores = person_pose["scores"]
-            display_frame = draw_pose(display_frame, keypoints, scores)
+            labels = person_pose["labels"]
 
-        # -------- contador de fps --------
-        fps_count = frame_count
+            print(f"\nPerson #{i}")
+
+            for kp, score, label in zip(keypoints, scores, labels):
+
+                name = pose_model.config.id2label[label.item()]
+                x, y = kp
+
+                print(
+                    f" - {name}: x={x.item():.2f}, y={y.item():.2f}, score={score.item():.2f}"
+                )
+
+            display_frame = draw_pose(
+                display_frame,
+                keypoints,
+                scores
+            )
+
+        # =================================
+        # FPS COUNTER
+        # =================================
+
         elapsed = time.time() - fps_timer
+
         if elapsed >= 1.0:
-            fps = fps_count / elapsed
+
+            fps = frame_count / elapsed
             frame_count = 0
             fps_timer = time.time()
+
+        # =================================
+        # OVERLAY TEXT
+        # =================================
 
         cv2.putText(
             display_frame,
@@ -114,15 +204,33 @@ def main():
             2
         )
 
+        # =================================
+        # SHOW FRAME
+        # =================================
+
         cv2.imshow("Pose Estimation - Press Q to quit", display_frame)
 
-        # Q -> salir
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        key = cv2.waitKey(1) & 0xFF
+
+        # Quit program
+        if key == ord("q"):
+            print("\nExiting program...")
             break
+
+        # Generate report
+        if key == ord("r"):
+            print("\nGenerating session report...")
+            generate_report(session)
+            print("Report generated successfully.\n")
+
+    # =================================
+    # CLEANUP
+    # =================================
 
     cap.release()
     cv2.destroyAllWindows()
-    print("Done.")
+
+    print("Program finished successfully.")
 
 
 if __name__ == "__main__":
