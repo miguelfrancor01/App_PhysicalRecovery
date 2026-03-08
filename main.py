@@ -9,9 +9,10 @@ from src.pose_module.pose_estimator import estimate_pose
 from src.pose_module.visualizer import draw_pose
 from src.report_module.session_data import SessionData
 from src.report_module.report_generator import generate_report
+from src.pose_rating import evaluate_pose, get_final_rating
 
 
-PROCESS_EVERY_N_FRAMES = 3
+PROCESS_EVERY_N_FRAMES =3
 
 
 def main():
@@ -162,12 +163,17 @@ def main():
                     f" - {name}: x={x.item():.2f}, y={y.item():.2f}, score={score.item():.2f}"
                 )
 
+            # -----------calificación--------------
+            evaluate_pose(keypoints)
+
             display_frame = draw_pose(
                 display_frame,
                 keypoints,
                 scores
             )
-
+      
+        
+            
         # =================================
         # FPS COUNTER
         # =================================
@@ -231,6 +237,15 @@ def main():
     cv2.destroyAllWindows()
 
     print("Program finished successfully.")
+    
+
+    results = get_final_rating()
+
+    print("\n===== FINAL EXERCISE REPORT =====")
+    print(f"Repetitions detected: {results['repetitions_detected']}")
+    print(f"Angles: {results['angles']}")
+    print(f"Scores: {results['scores']}")
+    print(f"Final score: {results['final_score']:.2f}%")
 
 
 if __name__ == "__main__":
