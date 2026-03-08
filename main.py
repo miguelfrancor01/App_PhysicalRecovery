@@ -1,7 +1,6 @@
 import torch
 import cv2
 import time
-from PIL import Image
 
 from src.pose_module.model_loader import load_models
 from src.pose_module.detector import detect_persons
@@ -10,6 +9,7 @@ from src.pose_module.visualizer import draw_pose
 from src.report_module.session_data import SessionData
 from src.report_module.report_generator import generate_report
 from src.pose_rating import evaluate_pose, get_final_rating
+from src.preprocessing.frame_preprocessing import procesar_frame_para_modelo
 
 
 PROCESS_EVERY_N_FRAMES =3
@@ -103,11 +103,24 @@ def main():
 
         if frame_count % PROCESS_EVERY_N_FRAMES == 0:
 
-            # Convert BGR → RGB
-            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # -----------------------------
+            # IMAGE PREPROCESSING
+            # -----------------------------
 
-            # Convert RGB → PIL
-            image_pil = Image.fromarray(image_rgb)
+            processed = procesar_frame_para_modelo(
+                frame,
+                frame_index=frame_count,
+                redimensionar=False,
+                ancho_objetivo=640,
+                aplicar_suavizado=False,
+            )
+
+            if not processed["valid"]:
+                print(f"[WARN] Frame inválido #{frame_count}: {processed['message']}")
+                last_pose_results = []
+                continue
+
+            image_pil = processed["image_pil"]
 
             # -----------------------------
             # PERSON DETECTION
