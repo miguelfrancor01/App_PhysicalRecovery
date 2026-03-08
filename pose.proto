@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package pose;
+
+service PoseService {
+  rpc StreamPose(stream PoseRequest) returns (stream PoseResponse);
+}
+
+message PoseRequest {
+  bytes image_data = 1;
+  int32 frame_id = 2;
+}
+
+message Keypoint {
+  int32 id = 1;     // Índice del punto (0-16 para COCO)
+  string name = 2;   // Nombre del punto (ej. "left_shoulder")
+  float x = 3;       // Coordenada horizontal en el frame
+  float y = 4;       // Coordenada vertical en el frame
+  float score = 5;   // Nivel de confianza de la IA para este punto (0.0 a 1.0)
+}
+
+message Person {
+  repeated Keypoint keypoints = 1; // Lista de todos los puntos clave encontrados
+}
+
+message PoseResponse {
+  int32 frame_id = 1;
+  repeated Person people = 2;
+  float current_angle = 3;    // Nuevo: Ángulo del brazo
+  int32 repetitions = 4;      // Nuevo: Conteo de reps
+  float final_score = 5;      // Nuevo: Calificación final
+}
