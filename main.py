@@ -12,7 +12,7 @@ from src.pose_rating import evaluate_pose, get_final_rating
 from src.preprocessing.frame_preprocessing import procesar_frame_para_modelo
 
 
-PROCESS_EVERY_N_FRAMES =3
+PROCESS_EVERY_N_FRAMES = 3
 
 
 def main():
@@ -40,9 +40,6 @@ def main():
 
     print("Loading AI models...")
 
-    print("-> Loading detection model (RT-DETR)")
-    print("-> Loading pose estimation model (VitPose)")
-
     det_processor, det_model, pose_processor, pose_model = load_models(device)
 
     print("Models loaded successfully.\n")
@@ -67,9 +64,7 @@ def main():
         raise RuntimeError("Cannot open video file")
 
     print("Video opened successfully.")
-    print("Controls:")
-    print("   Q → Quit program")
-    print("   R → Generate report\n")
+    print("Press Q to quit.\n")
 
     # =================================
     # VARIABLES
@@ -80,6 +75,8 @@ def main():
 
     fps = 0
     fps_timer = time.time()
+
+    last_frame_for_report = None
 
     print("Starting main processing loop...\n")
 
@@ -102,10 +99,6 @@ def main():
         # =================================
 
         if frame_count % PROCESS_EVERY_N_FRAMES == 0:
-
-            # -----------------------------
-            # IMAGE PREPROCESSING
-            # -----------------------------
 
             processed = procesar_frame_para_modelo(
                 frame,
@@ -176,7 +169,7 @@ def main():
                     f" - {name}: x={x.item():.2f}, y={y.item():.2f}, score={score.item():.2f}"
                 )
 
-            # -----------calificación--------------
+            # -------- evaluación del ejercicio --------
             evaluate_pose(keypoints)
 
             display_frame = draw_pose(
@@ -184,9 +177,10 @@ def main():
                 keypoints,
                 scores
             )
-      
-        
-            
+
+        # Guardar último frame para el reporte
+        last_frame_for_report = display_frame.copy()
+
         # =================================
         # FPS COUNTER
         # =================================
@@ -231,16 +225,9 @@ def main():
 
         key = cv2.waitKey(1) & 0xFF
 
-        # Quit program
         if key == ord("q"):
             print("\nExiting program...")
             break
-
-        # Generate report
-        if key == ord("r"):
-            print("\nGenerating session report...")
-            generate_report(session)
-            print("Report generated successfully.\n")
 
     # =================================
     # CLEANUP
@@ -249,8 +236,11 @@ def main():
     cap.release()
     cv2.destroyAllWindows()
 
-    print("Program finished successfully.")
-    
+    print("\nProgram finished successfully.")
+
+    # =================================
+    # FINAL RESULTS
+    # =================================
 
     results = get_final_rating()
 
@@ -259,6 +249,21 @@ def main():
     print(f"Angles: {results['angles']}")
     print(f"Scores: {results['scores']}")
     print(f"Final score: {results['final_score']:.2f}%")
+
+    # =================================
+    # GENERATE FINAL REPORT
+    # =================================
+
+    print("\nGenerating final report...")
+
+    frame_path = "reports/final_frame.jpg"
+
+    if last_frame_for_report is not None:
+        cv2.imwrite(frame_path, last_frame_for_report)
+
+    generate_report(session, results, frame_path)
+
+    print("Report generated successfully.")
 
 
 if __name__ == "__main__":
