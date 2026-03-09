@@ -1,11 +1,3 @@
-"""
-Módulo de Interfaz de Usuario - Physical Recovery AI.
-
-Este script gestiona la experiencia del usuario mediante Streamlit, permitiendo
-la selección de ejercicios, la visualización del procesamiento de pose en 
-tiempo real a través de gRPC y la generación de reportes clínicos en PDF.
-"""
-
 import streamlit as st
 import cv2
 import grpc
@@ -14,170 +6,193 @@ import av
 import os
 import sys
 import time
+import tempfile
 
-# Rutas de modulos
-src_path = os.path.join(os.path.dirname(__file__), 'src')
-if src_path not in sys.path: sys.path.insert(0, src_path)
+# --- CONFIGURACIÓN DE RUTAS ABSOLUTAS ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SRC_DIR = os.path.join(BASE_DIR, 'src')
 
-import pose_pb2
-import pose_pb2_grpc
-from pose_module.visualizer import draw_pose
-from report_module.session_data import SessionData
-from report_module.report_generator import generate_report
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
 
-# --- CONFIGURACION DE PAGINA ---
+# --- IMPORTACIONES DE MÓDULOS  ---
+try:
+    import pose_pb2
+    import pose_pb2_grpc
+    
+    from pose_module.draw_pose import draw_pose
+    from report_module.session_data import SessionData
+    from report_module.report_generator import generate_report
+except ImportError as e:
+    st.error(f"Error de dependencias internas: {e}")
+    st.stop()
+
+# --- CONFIGURACIÓN DE LA INTERFAZ ---
 st.set_page_config(page_title="App Physical Recovery", layout="wide")
 
-# Inicialización de variables de estado de sesión para persistencia
 if 'fase' not in st.session_state: st.session_state.fase = 'config'
 if 'stats' not in st.session_state: st.session_state.stats = {"reps": 0, "score": 0.0}
 if 'pdf_path' not in st.session_state: st.session_state.pdf_path = None
 
 st.title("App Physical Recovery")
-st.markdown("### Monitoreo de rehabilitación con VitaPose y gRPC")
+st.markdown("### Sistema de análisis de pose Vit Pose con gRPC")
 
 # --- BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-    """
-    Configuración del panel lateral.
-    Permite al usuario seleccionar el video de entrada y descargar el reporte final.
-    """
-    st.header("Panel de control")
-    ejercicio = st.selectbox("Ejercicio:", ["Elevación brazo izquierdo"])
-    
-    VIDEO_DIR = "videos"
-    video_files = [f for f in os.listdir(VIDEO_DIR) if f.endswith(('.mp4', '.avi'))]
-    selected_video = st.selectbox("Archivo de video:", video_files if video_files else ["N/A"])
+    st.header("Configuración de sesión")
+    ejercicio = st.selectbox("Tipo de ejercicio:", ["Elevación brazo izquierdo"])
     
     st.divider()
     
-    # Manejo de Reporte PDF: Se activa solo cuando el archivo ha sido generado
+    # Carga de video por el usuario
+    st.subheader("Subir video")
+    uploaded_file = st.file_uploader("Formatos soportados: MP4", type=["mp4"])
+    
+    st.divider()
+    
+    # Botones de descarga y reinicio
     if st.session_state.fase == 'finalizado' and st.session_state.pdf_path:
-        st.subheader("Reporte generado")
-        with open(st.session_state.pdf_path, "rb") as f:
-            st.download_button(
-                label="Descargar reporte PDF",
-                data=f,
-                file_name=os.path.basename(st.session_state.pdf_path),
-                mime="application/pdf",
-                use_container_width=True
-            )
+        if os.path.exists(st.session_state.pdf_path):
+            with open(st.session_state.pdf_path, "rb") as f:
+                st.download_button(
+                    label="Descargar reporte PDF",
+                    data=f,
+                    file_name=os.path.basename(st.session_state.pdf_path),
+                    mime="application/pdf",
+                    use_container_width=True
+                )
 
-    if st.button("Reiniciar aplicativo", use_container_width=True):
+    if st.button("Reiniciar aplicación", use_container_width=True):
         st.session_state.fase = 'config'
         st.session_state.stats = {"reps": 0, "score": 0.0}
         st.session_state.pdf_path = None
-        st.rerun() 
+        st.rerun()
 
-# --- FLUJO DE PANTALLAS ---
+# --- LÓGICA DE PANTALLAS ---
 
 if st.session_state.fase == 'config':
-    """
-    Fase de configuración inicial.
-    Estado de espera donde el usuario confirma la selección del video.
-    """
-    st.info("Seleccione su video y presione 'Comenzar evaluación' para iniciar el procesamiento. El vídeo debe posicionarse en ubicación sagital y empezar a levantar su brazo izquierdo.")
-    
-    if selected_video != "N/A":
+    st.info("Cargue un video en el panel lateral para comenzar el análisis biomecánico.")
+    if uploaded_file is not None:
+        st.success(f"Archivo listo: {uploaded_file.name}")
         if st.button("Comenzar evaluación", type="primary", use_container_width=True):
             st.session_state.fase = 'procesando'
             st.rerun()
 
 elif st.session_state.fase == 'procesando':
-    """
-    Fase de procesamiento en tiempo real.
-    Establece conexión gRPC, decodifica el video y actualiza las métricas en pantalla.
-    """
     col_vid, col_met = st.columns([2, 1])
-    placeholder = col_vid.empty() # Espacio para el video procesado
+    placeholder = col_vid.empty()
     
+    historial_angulos = []
+    ultimo_frame_con_pose = None
+
     with col_met:
-        st.subheader("Métricas de desempeño")
+        st.subheader("Métricas")
         m_reps = st.empty()
         m_angle = st.empty()
         m_score = st.empty()
         st.divider()
-        stop_btn = st.button("Detener sesión", type="primary", use_container_width=True)
+        stop_btn = st.button("Finalizar y generar reporte", type="primary", use_container_width=True)
 
+    # --- MANEJO DE ARCHIVO TEMPORAL (WINDOWS SAFE) ---
+    tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+    video_path = tfile.name
+    
     try:
-        # Inicio de métricas de rendimiento
-        start_time = time.time()
-        
+        # Escribimos los bytes y cerramos el puntero de escritura inmediatamente
+        tfile.write(uploaded_file.read())
+        tfile.close() 
+
         # Conexión al servidor gRPC
         channel = grpc.insecure_channel('localhost:50051')
         stub = pose_pb2_grpc.PoseServiceStub(channel)
         
-        # Apertura del contenedor de video mediante PyAV
-        container = av.open(os.path.join(VIDEO_DIR, selected_video))
-        
+        # Procesamiento del video
+        container = av.open(video_path)
+        start_time = time.time()
         frames_count = 0
-        for frame in container.decode(video=0):
-            frames_count += 1
-            img_raw = frame.to_ndarray(format='bgr24')
-            img_proc = cv2.resize(img_raw, (640, 360)) # Normalización de tamaño
-            
-            # Codificación de imagen para envío gRPC
-            _, buffer = cv2.imencode('.jpg', img_proc)
-            request = pose_pb2.PoseRequest(image_data=buffer.tobytes(), frame_id=frames_count)
-            
-            # Consumo del servicio StreamPose
-            responses = stub.StreamPose(iter([request]))
-            
-            for res in responses:
-                # Dibujado de esqueleto si se detectan personas
-                if len(res.people) > 0:
-                    for p in res.people:
-                        kpts = np.array([[kp.x, kp.y] for kp in p.keypoints])
-                        img_proc = draw_pose(img_proc, kpts, np.array([kp.score for kp in p.keypoints]))
 
-                # Actualización de la interfaz
-                placeholder.image(cv2.cvtColor(img_proc, cv2.COLOR_BGR2RGB))
+        try:
+            for frame in container.decode(video=0):
+                frames_count += 1
+                img_raw = frame.to_ndarray(format='bgr24')
+                img_disp = cv2.resize(img_raw, (640, 360))
                 
-                # Sincronización de estados y métricas
-                st.session_state.stats.update({"reps": res.repetitions, "score": res.final_score})
-                m_reps.metric("Repeticiones", res.repetitions)
-                m_angle.metric("Ángulo actual", f"{res.current_angle:.1f}°")
-                m_score.metric("Puntaje", f"{res.final_score:.1f}%")
+                # Codificación para gRPC
+                _, buffer = cv2.imencode('.jpg', img_disp)
+                request = pose_pb2.PoseRequest(image_data=buffer.tobytes(), frame_id=frames_count)
                 
-                # Condición de parada automática por meta cumplida
-                if res.repetitions >= 5: st.session_state.fase = 'finalizado'
-                break
-            
-            # Salida manual o por cumplimiento de reps
-            if stop_btn or st.session_state.fase == 'finalizado': break
-        
-        # Cálculo de estadísticas finales de la sesión
+                # Llamada al servidor
+                responses = stub.StreamPose(iter([request]))
+                for res in responses:
+                    if len(res.people) > 0:
+                        for p in res.people:
+                            # Extracción de puntos para dibujo
+                            kpts = np.array([[kp.x, kp.y] for kp in p.keypoints])
+                            confs = np.array([kp.score for kp in p.keypoints])
+                            img_disp = draw_pose(img_disp, kpts, confs)
+                        
+                        if frames_count % 15 == 0:
+                            historial_angulos.append(res.current_angle)
+                        ultimo_frame_con_pose = img_disp.copy()
+
+                    # Actualización de UI
+                    placeholder.image(cv2.cvtColor(img_disp, cv2.COLOR_BGR2RGB))
+                    m_reps.metric("Repeticiones", res.repetitions)
+                    m_angle.metric("Ángulo", f"{res.current_angle:.1f}°")
+                    m_score.metric("Puntaje precisión", f"{res.final_score:.1f}%")
+                    
+                    st.session_state.stats = {"reps": res.repetitions, "score": res.final_score}
+                    break
+                
+                if stop_btn: break
+        finally:
+            # Liberamos el video antes de intentar borrar el archivo del disco
+            container.close()
+
+        # --- FASE DE CIERRE Y REPORTE ---
         duration = time.time() - start_time
-        container.close()
         
-        # --- GENERACIÓN DE REPORTE PDF ---
-        # Creación del objeto de datos de sesión para el generador
+        # Captura de pantalla para el PDF
+        img_temp_report = "session_capture.jpg"
+        if ultimo_frame_con_pose is not None:
+            cv2.imwrite(img_temp_report, ultimo_frame_con_pose)
+
+        # Configuración de datos del reporte
         session = SessionData()
         session.exercise_name = ejercicio
-        session.total_reps = st.session_state.stats["reps"]
-        session.correct_reps = st.session_state.stats["reps"]
-        session.incorrect_reps = 0
         session.duration_seconds = int(duration)
         session.avg_fps = int(frames_count / duration) if duration > 0 else 0
         
-        # Ejecución del generador de reportes
-        generate_report(session)
+        results = {
+            "repetitions_detected": st.session_state.stats["reps"],
+            "angles": historial_angulos[-8:],
+            "scores": [st.session_state.stats["score"]],
+            "final_score": st.session_state.stats["score"]
+        }
+
+        # Generar PDF
+        generate_report(session, results, image_path=img_temp_report)
         
-        # Localización del PDF generado para habilitar la descarga
-        report_files = [os.path.join("reports", f) for f in os.listdir("reports") if f.endswith(".pdf")]
-        if report_files:
-            st.session_state.pdf_path = max(report_files, key=os.path.getctime)
+        # Buscar el archivo generado
+        if os.path.exists("reports"):
+            reports = [os.path.join("reports", f) for f in os.listdir("reports") if f.endswith(".pdf")]
+            if reports:
+                st.session_state.pdf_path = max(reports, key=os.path.getctime)
+
+        # Borrado del video temporal
+        if os.path.exists(video_path):
+            try: os.remove(video_path)
+            except: pass
 
         st.session_state.fase = 'finalizado'
         st.rerun()
 
     except Exception as e:
-        st.error(f"Error gRPC: {e}")
+        st.error(f"Error durante el procesamiento: {e}")
+        if os.path.exists(video_path):
+            try: os.remove(video_path)
+            except: pass
 
 elif st.session_state.fase == 'finalizado':
-    """
-    Fase de finalización.
-    Muestra el resumen final del desempeño y orienta al usuario hacia el reporte.
-    """
-    st.success(f"Sesión completada. Puntaje alcanzado: {st.session_state.stats['score']:.1f}%")
-    st.info("Puede descargar el reporte PDF desde el panel lateral izquierdo.")
+    st.success(f"Evaluación completada con éxito. Total repeticiones: {st.session_state.stats['reps']}")
+    st.balloons()
