@@ -124,6 +124,13 @@ elif st.session_state.fase == 'procesando':
                 # Llamada al servidor
                 responses = stub.StreamPose(iter([request]))
                 for res in responses:
+                    # Mensaje final enviado por el servidor
+                    if res.frame_id == -1:
+                        st.session_state.stats = {
+                            "reps": res.repetitions,
+                            "score": res.final_score
+                        }
+                        break
                     if len(res.people) > 0:
                         for p in res.people:
                             # Extracción de puntos para dibujo
@@ -139,9 +146,15 @@ elif st.session_state.fase == 'procesando':
                     placeholder.image(cv2.cvtColor(img_disp, cv2.COLOR_BGR2RGB))
                     m_reps.metric("Repeticiones", res.repetitions)
                     m_angle.metric("Ángulo", f"{res.current_angle:.1f}°")
-                    m_score.metric("Puntaje precisión", f"{res.final_score:.1f}%")
-                    
-                    st.session_state.stats = {"reps": res.repetitions, "score": res.final_score}
+                   
+                    # actualizar repeticiones siempre
+                    st.session_state.stats["reps"] = res.repetitions
+
+                    # actualizar score solo cuando llegue el final
+                    if res.final_score > 0:
+                        m_score.metric("Puntaje precisión", f"{res.final_score:.1f}%")
+                        st.session_state.stats["score"] = res.final_score
+
                     break
                 
                 if stop_btn: break
@@ -194,5 +207,9 @@ elif st.session_state.fase == 'procesando':
             except: pass
 
 elif st.session_state.fase == 'finalizado':
-    st.success(f"Evaluación completada con éxito. Total repeticiones: {st.session_state.stats['reps']}")
+    st.success(
+    f"Evaluación completada. "
+    f"Repeticiones: {st.session_state.stats['reps']} | "
+    f"Score global: {st.session_state.stats['score']:.1f}%"
+    )
     st.balloons()
