@@ -1,0 +1,96 @@
+import numpy as np
+import torch
+from PIL import Image
+from unittest.mock import MagicMock
+
+from src.pose_module.pose_estimator import estimate_pose
+
+
+class DummyInputs(dict):
+    """
+    Clase auxiliar utilizada en pruebas unitarias para simular el objeto de
+    inputs que normalmente devuelve el processor de HuggingFace.
+
+    En el pipeline real de estimación de pose, el processor genera un
+    diccionario con tensores (por ejemplo, `pixel_values`) que posteriormente
+    se envían al dispositivo de cómputo mediante el método `.to(device)` de
+    PyTorch.
+
+    Esta clase hereda de `dict` para comportarse como el objeto real de
+    inputs y define un método `.to()` que:
+
+    - registra el dispositivo recibido (`device_received`)
+    - retorna el propio objeto, imitando el comportamiento de PyTorch
+
+    Esto permite que las pruebas unitarias verifiquen que el pipeline envía
+    correctamente los inputs al dispositivo (CPU/GPU) sin necesidad de crear
+    tensores reales ni ejecutar operaciones de PyTorch.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.device_received = None
+
+    def to(self, device):
+        self.device_received = device
+        return self
+
+
+def test_estimate_pose_pipeline():
+    """
+    Verifica el flujo completo de estimate_pose:
+
+    1. El processor recibe la imagen y cajas correctamente.
+    2. Los inputs se envían al device.
+    3. Se añade dataset_index al diccionario de inputs.
+    4. El modelo recibe los inputs correctos.
+    5. Se ejecuta el postprocesamiento.
+    6. La función retorna el primer resultado de pose_results.
+    """
+
+    image = Image.fromarray(np.zeros((64, 64, 3), dtype=np.uint8))
+    person_boxes = [[10, 10, 40, 50]]
+    device = "cpu"
+
+    processor = MagicMock()
+
+    inputs_mock = DummyInputs({"pixel_values": "fake_tensor"})
+    processor.return_value = inputs_mock
+
+    processor.post_process_pose_estimation.return_value = [
+        {"keypoints": [[1, 2], [3, 4]], "scores": [0.9, 0.8]}
+    ]
+
+    model = MagicMock()
+    model.return_value = {"logits": "fake"}
+
+    result = estimate_pose(
+        image=image,
+        person_boxes=person_boxes,
+        processor=processor,
+        model=model,
+        device=device
+    )
+
+    processor.assert_called_once_with(
+        image,
+        boxes=[person_boxes],
+        return_tensors="pt"
+    )
+
+    assert inputs_mock.device_received == device
+
+    assert "dataset_index" in inputs_mock
+    assert torch.equal(
+        inputs_mock["dataset_index"],
+        torch.tensor([0], device=device)
+    )
+
+    model.assert_called_once_with(**inputs_mock)
+
+    processor.post_process_pose_estimation.assert_called_once_with(
+        {"logits": "fake"},
+        boxes=[person_boxes],
+        threshold=0.3
+    )
+
+    assert result == {"keypoints": [[1, 2], [3, 4]], "scores": [0.9, 0.8]}
