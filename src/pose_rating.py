@@ -10,9 +10,9 @@ La evaluación final se obtiene al finalizar el video.
 import numpy as np
 
 
-UP_THRESHOLD = 90
-DOWN_THRESHOLD = 70
-EXPECTED_REPS = 5
+UP_THRESHOLD = 40
+DOWN_THRESHOLD = 30
+EXPECTED_REPS = 4
 
 
 in_rep = False
@@ -39,19 +39,22 @@ def _compute_arm_angle(keypoints):
     wrist = keypoints[9][:2]
     hip = keypoints[11][:2]
 
-    # Definición de vectores anatómicos
-    v_trunk = hip - shoulder   # Vector hacia abajo del cuerpo
-    v_arm = wrist - shoulder   # Vector hacia la extremidad
+    a = np.array(hip)
+    b = np.array(shoulder)
+    c = np.array(wrist)
 
-    norm_t = np.linalg.norm(v_trunk)
-    norm_a = np.linalg.norm(v_arm)
+    ba = a - b
+    bc = c - b
 
-    if norm_t == 0 or norm_a == 0:
+    norm_ba = np.linalg.norm(ba)
+    norm_bc = np.linalg.norm(bc)
+
+    if norm_ba == 0 or norm_bc == 0:
         return 0.0
 
-    # Cálculo del ángulo mediante producto punto
-    cosine = np.dot(v_trunk, v_arm) / (norm_t * norm_a)
+    cosine = np.dot(ba, bc) / (norm_ba * norm_bc)
     cosine = np.clip(cosine, -1.0, 1.0)
+
     angle = np.degrees(np.arccos(cosine))
 
     return float(angle)
@@ -59,9 +62,19 @@ def _compute_arm_angle(keypoints):
 
 def _angle_to_score(angle):
     """
-    Transforma el ángulo máximo alcanzado en un puntaje porcentual.
-    Considera 90 grados como el rango de movimiento (ROM) óptimo.
+    Convierte un ángulo a calificación porcentual.
+
+    90 grados o más equivale a 100 %.
+
+    Parameters
+    ----------
+    angle : float
+
+    Returns
+    -------
+    float
     """
+
     return min((angle / 90.0) * 100.0, 100.0)
 
 
@@ -81,27 +94,29 @@ def evaluate_pose(keypoints):
     None
     """
 
-    global in_rep, repetition_angles
+    global in_rep
+    global max_angle
+    global repetition_angles
+
     angle = _compute_arm_angle(keypoints)
 
-    # 1. DETECTAR SUBIDA (DISPARO INMEDIATO)
-    if not in_rep and angle >= UP_THRESHOLD:
+    if not in_rep and angle > UP_THRESHOLD:
         in_rep = True
-        # Registramos la repeticion apenas cruza la linea
-        if len(repetition_angles) < EXPECTED_REPS:
-            repetition_angles.append(angle)
-            print(f"DEBUG: Repeticion detectada! Total: {len(repetition_angles)}")
-    
-    # 2. ACTUALIZAR EL MEJOR ANGULO DE LA REPE ACTUAL
+        max_angle = angle
+
     elif in_rep:
-        if angle > repetition_angles[-1]:
-            repetition_angles[-1] = angle
-        
-        # 3. RESETEAR ESTADO PARA LA SIGUIENTE REPE (BAJADA)
-        # Solo permitimos una nueva repeticion cuando el brazo baje de 70
+
+        max_angle = max(max_angle, angle)
+
         if angle < DOWN_THRESHOLD:
+
+            if len(repetition_angles) < EXPECTED_REPS:
+                repetition_angles.append(max_angle)
+
             in_rep = False
-            print("DEBUG: Brazo abajo, listo para la siguiente.")
+            max_angle = 0.0
+    print("Reps actuales:", repetition_angles)
+
 
 def get_final_rating():
     """
@@ -114,13 +129,23 @@ def get_final_rating():
     """
 
     if not repetition_angles:
-        return {"repetitions_detected": 0, "final_score": 0.0}
 
-    # Calculamos el score de cada repeticion (maximo 100%)
-    scores = [min((a / 90.0) * 100.0, 100.0) for a in repetition_angles]
+        return {
+            "repetitions_detected": 0,
+            "angles": [],
+            "scores": [],
+            "final_score": 0.0
+        }
+
+    scores = [_angle_to_score(a) for a in repetition_angles]
+
+    final_score = float(np.mean(scores))
+
     return {
         "repetitions_detected": len(repetition_angles),
-        "final_score": float(np.mean(scores))
+        "angles": repetition_angles,
+        "scores": scores,
+        "final_score": final_score
     }
 
 
