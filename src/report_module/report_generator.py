@@ -24,32 +24,74 @@ ACENTO           = colors.HexColor("#4A90D9")   # Azul brillante para detalles
 
 def _draw_header(c, width, height):
     """Dibuja el encabezado institucional en la parte superior."""
+
     # Banda azul superior
     c.setFillColor(AZUL_PRIMARIO)
     c.rect(0, height - 75, width, 75, fill=True, stroke=False)
 
-    # Línea decorativa de acento
+    # Línea decorativa
     c.setFillColor(ACENTO)
     c.rect(0, height - 78, width, 3, fill=True, stroke=False)
 
-    # Título principal
+    # Título
+
+    title = "App Physical Recovery"
+
     c.setFillColor(BLANCO)
     c.setFont("Helvetica-Bold", 18)
-    c.drawString(40, height - 38, "App Physical Recovery")
 
+    title_x = 40
+    title_y = height - 38
+
+    c.drawString(title_x, title_y, title)
+
+    # =========================
+    # Logo a la derecha del título
+    # =========================
+    BASE_DIR = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+
+    logo_path = os.path.join(BASE_DIR, "logos", "Pdf logo.png")
+
+    if os.path.exists(logo_path):
+
+        logo_size = 40
+
+        text_width = c.stringWidth(title, "Helvetica-Bold", 18)
+
+        logo_x = title_x + text_width + 12
+
+        # centra el logo con el texto
+        logo_y = title_y - (logo_size / 2) 
+
+        c.drawImage(
+            logo_path,
+            logo_x,
+            logo_y,
+            width=logo_size,
+            height=logo_size,
+            mask='auto'
+        )
+
+    # =========================
     # Subtítulo
+    # =========================
     c.setFont("Helvetica", 10)
     c.setFillColor(colors.HexColor("#A8C8E8"))
     c.drawString(40, height - 56, "Sistema de Análisis Biomecánico con IA")
 
-    # Fecha en esquina superior derecha
+    # =========================
+    # Fecha y nota de generación automática a la derecha
+    # =========================
     c.setFont("Helvetica", 9)
     c.setFillColor(BLANCO)
+
     fecha = datetime.datetime.now().strftime("%d/%m/%Y  %H:%M")
     c.drawRightString(width - 40, height - 38, fecha)
+
     c.setFillColor(colors.HexColor("#A8C8E8"))
     c.drawRightString(width - 40, height - 55, "Reporte generado automáticamente")
-
 
 def _draw_footer(c, width):
     """Dibuja el pie de página."""
