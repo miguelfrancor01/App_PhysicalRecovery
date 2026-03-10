@@ -34,13 +34,14 @@ class PoseServicer(pose_pb2_grpc.PoseServiceServicer):
         print(f"Servidor gRPC iniciado en {self.device} con pose_module")
 
     def StreamPose(self, request_iterator, context):
-        reset_session()
         
         for request in request_iterator:
             try:
                 nparr = np.frombuffer(request.image_data, np.uint8)
                 frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                if frame is None: continue
+                if frame is None:
+                    yield pose_pb2.PoseResponse(frame_id=request.frame_id)
+                    continue
 
                 resultado_pre = procesar_frame_para_modelo(
                     frame,
@@ -68,8 +69,8 @@ class PoseServicer(pose_pb2_grpc.PoseServiceServicer):
                     keypoints = person_pose["keypoints"]
                     scores = person_pose["scores"]
 
-                    evaluate_pose(keypoints)
-                    stats = get_final_rating()
+                    
+                    
 
                     # Llenado de mensaje gRPC
                     person_msg = response.people.add()
@@ -79,19 +80,37 @@ class PoseServicer(pose_pb2_grpc.PoseServiceServicer):
                         kp_item.x = float(kp[0])
                         kp_item.y = float(kp[1])
                         kp_item.score = float(sc)
-                    
-                    response.current_angle = float(_compute_arm_angle(keypoints))
+                    angle = _compute_arm_angle(keypoints)
+
+                    evaluate_pose(keypoints)
+                    stats = get_final_rating()
+
+                    response.current_angle = float(angle)
                     response.repetitions = int(stats["repetitions_detected"])
-                    response.final_score = float(stats["final_score"])
+
+                    # No enviar score final aún
+                    response.final_score = 0.0
+                    
+                 
                 else:
                     stats = get_final_rating()
                     response.repetitions = int(stats["repetitions_detected"])
-                    response.final_score = float(stats["final_score"])
+                    response.final_score = 0.0
 
                 yield response
+
             except Exception as e:
                 print(f"Error en servidor: {e}")
                 yield pose_pb2.PoseResponse(frame_id=request.frame_id)
+        
+        # Cuando termina el stream del video
+        final_stats = get_final_rating()
+
+        yield pose_pb2.PoseResponse(
+            frame_id=-1,
+            repetitions=int(final_stats["repetitions_detected"]),
+            final_score=float(final_stats["final_score"])
+        )
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
