@@ -1,9 +1,13 @@
 .PHONY: server client clear
 server:
-	uv run python src/grpc_server.py
+	.venv/Scripts/python src/grpc_server.py
 client:
-	uv run streamlit run app.py
+	.venv/Scripts/streamlit run app.py
 clear:
 	cls
 	cls
 	cls
+serverMl:
+	uv run mlflow server --port 5000
+experiments:
+	python src/mlflow_experiments.py
