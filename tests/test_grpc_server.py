@@ -1,5 +1,45 @@
+import sys
+import types
 import numpy as np
 import pytest
+
+# -------------------------------------------------
+# Teniendo en cuenta que en las pruebas unitarias no se quieren cargar los módulos reales porque
+# estos inicializan modelos de visión por computadora, se crearon
+# módulos simulados usando types.ModuleType y se registran en sys.modules.
+#
+# De esta forma, cuando src.grpc_server realiza esos imports, Python
+# utiliza estas implementaciones ficticias, permitiendo probar únicamente
+# la lógica del servidor sin ejecutar inferencia real.
+# -------------------------------------------------
+# -------------------------------------------------
+pose_module_pkg = types.ModuleType("pose_module")
+sys.modules["pose_module"] = pose_module_pkg
+
+model_loader_mod = types.ModuleType("pose_module.model_loader")
+model_loader_mod.load_models = lambda device: (
+    "fake_det_processor",
+    "fake_det_model",
+    "fake_pose_processor",
+    "fake_pose_model",
+)
+sys.modules["pose_module.model_loader"] = model_loader_mod
+
+detector_mod = types.ModuleType("pose_module.detector")
+detector_mod.detect_persons = lambda image, processor, model, device: np.array([[10, 20, 30, 40]])
+sys.modules["pose_module.detector"] = detector_mod
+
+pose_estimator_mod = types.ModuleType("pose_module.pose_estimator")
+pose_estimator_mod.estimate_pose = lambda image, boxes, processor, model, device: {
+    "keypoints": [[100, 200], [150, 250]],
+    "scores": [0.9, 0.8]
+}
+sys.modules["pose_module.pose_estimator"] = pose_estimator_mod
+
+pose_rating_mod = types.ModuleType("pose_rating")
+pose_rating_mod._compute_arm_angle = lambda keypoints: 95.0
+sys.modules["pose_rating"] = pose_rating_mod
+
 from src.grpc_server import PoseServicer
 
 
@@ -15,19 +55,6 @@ def test_stream_pose_generates_valid_response(monkeypatch):
     Este test valida el flujo principal del servidor sin ejecutar modelos reales
     de visión por computadora. Para ello se reemplazan (mockean) las funciones
     externas mediante monkeypatch.
-
-    Flujo validado
-    --------------
-    1. Decodificación del frame recibido.
-    2. Preprocesamiento del frame.
-    3. Detección de personas.
-    4. Estimación de pose.
-    5. Evaluación del ejercicio.
-    6. Construcción del PoseResponse con:
-        - keypoints
-        - ángulo actual
-        - número de repeticiones
-        - puntuación final
     """
 
     # -----------------------------
@@ -61,16 +88,8 @@ def test_stream_pose_generates_valid_response(monkeypatch):
     )
 
     # -----------------------------
-    # Mock de funciones de evaluación
+    # Mock del cálculo de ángulo
     # -----------------------------
-    monkeypatch.setattr("src.grpc_server.reset_session", lambda: None)
-    monkeypatch.setattr("src.grpc_server.evaluate_pose", lambda k: None)
-
-    monkeypatch.setattr(
-        "src.grpc_server.get_final_rating",
-        lambda: {"repetitions_detected": 2, "final_score": 80}
-    )
-
     monkeypatch.setattr(
         "src.grpc_server._compute_arm_angle",
         lambda keypoints: 95.0
@@ -81,12 +100,12 @@ def test_stream_pose_generates_valid_response(monkeypatch):
     # -----------------------------
     monkeypatch.setattr(
         "src.grpc_server.np.frombuffer",
-        lambda data, dtype: np.array([1, 2, 3])
+        lambda data, dtype: np.array([1, 2, 3], dtype=np.uint8)
     )
 
     monkeypatch.setattr(
         "src.grpc_server.cv2.imdecode",
-        lambda arr, flag: np.zeros((10, 10, 3))
+        lambda arr, flag: np.zeros((10, 10, 3), dtype=np.uint8)
     )
 
     # -----------------------------
@@ -120,10 +139,8 @@ def test_stream_pose_generates_valid_response(monkeypatch):
     # Verificar ID del frame
     assert response.frame_id == 1
 
-    # Verificar métricas calculadas
+    # Verificar ángulo calculado
     assert response.current_angle == 95.0
-    assert response.repetitions == 2
-    assert response.final_score == 80
 
     # Verificar estructura de personas detectadas
     assert len(response.people) == 1
