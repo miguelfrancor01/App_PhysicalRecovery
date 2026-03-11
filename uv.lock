@@ -724,6 +724,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 
+<<<<<<< HEAD
 [[package]]
 name = "docker"
 version = "7.1.0"
@@ -738,6 +739,8 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e3/26/57c6fb270950d476074c087527a558ccb6f4436657314bfb6cdf484114c4/docker-7.1.0-py3-none-any.whl", hash = "sha256:c96b93b7f0a746f9e77d325bcfb87422a3d8bd4f03136ae8a85b37f1898d5fc0", size = 147774, upload-time = "2024-05-23T11:13:55.01Z" },
 ]
 
+=======
+>>>>>>> 2f243e73f09b4ee0b7b2399c4870b03ad53b1ddb
 [[package]]
 name = "exceptiongroup"
 version = "1.3.1"
@@ -1304,6 +1307,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "importlib-metadata"
 version = "8.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1316,6 +1320,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> 2f243e73f09b4ee0b7b2399c4870b03ad53b1ddb
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1325,6 +1331,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "itsdangerous"
 version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1334,6 +1341,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> 2f243e73f09b4ee0b7b2399c4870b03ad53b1ddb
 name = "jinja2"
 version = "3.1.6"
 source = { registry = "https://pypi.org/simple" }
@@ -2582,6 +2591,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "prettytable"
 version = "3.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2594,6 +2604,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> 2f243e73f09b4ee0b7b2399c4870b03ad53b1ddb
 name = "protobuf"
 version = "6.33.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2880,6 +2892,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "pyparsing"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2889,6 +2902,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> 2f243e73f09b4ee0b7b2399c4870b03ad53b1ddb
 name = "pytest"
 version = "9.0.2"
 source = { registry = "https://pypi.org/simple" }
