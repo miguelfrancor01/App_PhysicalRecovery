@@ -1,7 +1,7 @@
 import numpy as np
 from PIL import Image
 
-from src.preprocessing.frame_preprocessing import procesar_frame_para_modelo
+from preprocessing.frame_preprocessing import procesar_frame_para_modelo
 
 
 def test_procesar_frame_para_modelo_realiza_pipeline_completo_correctamente():

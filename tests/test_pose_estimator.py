@@ -3,7 +3,7 @@ import torch
 from PIL import Image
 from unittest.mock import MagicMock
 
-from src.pose_module.pose_estimator import estimate_pose
+from pose_module.pose_estimator import estimate_pose
 
 
 class DummyInputs(dict):
