@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.pose_module.draw_pose import draw_pose
+from pose_module.draw_pose import draw_pose
 
 
 def test_draw_pose_dibuja_keypoints_y_conexiones_respetando_threshold():

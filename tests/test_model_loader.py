@@ -1,11 +1,11 @@
 from unittest.mock import patch, MagicMock
 
-from src.pose_module.model_loader import load_models
+from pose_module.model_loader import load_models
 
 
-@patch("src.pose_module.model_loader.VitPoseForPoseEstimation")
-@patch("src.pose_module.model_loader.RTDetrForObjectDetection")
-@patch("src.pose_module.model_loader.AutoProcessor")
+@patch("pose_module.model_loader.VitPoseForPoseEstimation")
+@patch("pose_module.model_loader.RTDetrForObjectDetection")
+@patch("pose_module.model_loader.AutoProcessor")
 def test_load_models_carga_modelos_y_procesadores(mock_processor, mock_det_model, mock_pose_model):
     """
     Verifica que load_models:

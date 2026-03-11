@@ -3,7 +3,7 @@ import torch
 from PIL import Image
 from unittest.mock import MagicMock
 
-from src.pose_module.detector import detect_persons
+from pose_module.detector import detect_persons
 
 
 class DummyInputs(dict):
