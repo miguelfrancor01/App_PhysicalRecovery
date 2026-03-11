@@ -1,4 +1,4 @@
-from pose_rating import reset_session
+from ..pose_rating import reset_session
 
 from .model_loader import load_models
 from .detector import detect_persons
