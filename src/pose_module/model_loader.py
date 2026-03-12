@@ -11,7 +11,7 @@ from transformers import (
 )
 
 
-DET_MODEL = "PekingU/rtdetr_r50vd_coco_o365"
+DET_MODEL = "PekingU/rtdetr_r18vd"
 POSE_MODEL = "usyd-community/vitpose-plus-base"
 
 
