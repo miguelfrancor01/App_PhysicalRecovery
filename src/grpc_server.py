@@ -7,22 +7,23 @@ import grpc
 import numpy as np
 import torch
 
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
 
 import pose_pb2
 import pose_pb2_grpc
-from pose_module.detector import detect_persons
-from pose_module.model_loader import load_models
-from pose_module.pose_estimator import estimate_pose
 from pose_rating import _compute_arm_angle
 from preprocessing.frame_preprocessing import procesar_frame_para_modelo
 
+from pose_module.detector import detect_persons
+from pose_module.model_loader import load_models
+from pose_module.pose_estimator import estimate_pose
+
 
 class PoseServicer(pose_pb2_grpc.PoseServiceServicer):
-    """
-    Implementación del servicio gRPC para estimación de pose.
+    """Implementación del servicio gRPC para estimación de pose.
 
     Este servicio recibe frames codificados desde el cliente, los decodifica,
     ejecuta el pipeline de preprocesamiento, detección de personas y
@@ -34,19 +35,15 @@ class PoseServicer(pose_pb2_grpc.PoseServiceServicer):
     """
 
     def __init__(self):
-        """
-        Inicializa el servicio cargando los modelos de detección y pose
+        """Inicializa el servicio cargando los modelos de detección y pose
         en el dispositivo disponible (CPU o GPU).
         """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.det_p, self.det_m, self.pose_p, self.pose_m = load_models(
-            self.device
-        )
+        self.det_p, self.det_m, self.pose_p, self.pose_m = load_models(self.device)
         print(f"Servidor gRPC iniciado en {self.device} con pose_module")
 
     def StreamPose(self, request_iterator, context):
-        """
-        Procesa un flujo de frames entrantes y devuelve respuestas de pose.
+        """Procesa un flujo de frames entrantes y devuelve respuestas de pose.
 
         Por cada frame recibido, el servidor:
 
@@ -58,13 +55,16 @@ class PoseServicer(pose_pb2_grpc.PoseServiceServicer):
         6. Devuelve una respuesta `PoseResponse` con los resultados.
 
         Args:
+        ----
             request_iterator: Iterador de mensajes `PoseRequest`.
             context: Contexto de la llamada gRPC.
 
         Yields:
+        ------
             pose_pb2.PoseResponse: Respuesta con el ID del frame, keypoints
             detectados y ángulo actual. Si ocurre un error o el frame no es
             válido, se retorna una respuesta vacía con el `frame_id`.
+
         """
         # El servidor no llama evaluate_pose() ni reset_session().
         # Su única responsabilidad es:
@@ -124,7 +124,7 @@ class PoseServicer(pose_pb2_grpc.PoseServiceServicer):
 
                     # Llenar keypoints en el mensaje de respuesta.
                     person_msg = response.people.add()
-                    for i, (kp, sc) in enumerate(zip(keypoints, scores)):
+                    for i, (kp, sc) in enumerate(zip(keypoints, scores, strict=False)):
                         kp_item = person_msg.keypoints.add()
                         kp_item.id = i
                         kp_item.x = float(kp[0])
@@ -132,9 +132,7 @@ class PoseServicer(pose_pb2_grpc.PoseServiceServicer):
                         kp_item.score = float(sc)
 
                     # Calcular el ángulo actual para mostrarlo en la UI.
-                    response.current_angle = float(
-                        _compute_arm_angle(keypoints)
-                    )
+                    response.current_angle = float(_compute_arm_angle(keypoints))
 
                 yield response
 
@@ -144,9 +142,7 @@ class PoseServicer(pose_pb2_grpc.PoseServiceServicer):
 
 
 def serve():
-    """
-    Inicia el servidor gRPC y lo deja escuchando en el puerto 50051.
-    """
+    """Inicia el servidor gRPC y lo deja escuchando en el puerto 50051."""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
     pose_pb2_grpc.add_PoseServiceServicer_to_server(PoseServicer(), server)
     server.add_insecure_port("[::]:50051")

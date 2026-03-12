@@ -1,5 +1,4 @@
-"""
-Módulo para evaluar un ejercicio de elevación del brazo izquierdo.
+"""Módulo para evaluar un ejercicio de elevación del brazo izquierdo.
 
 El sistema detecta repeticiones del movimiento y calcula la calificación
 final basada en el ángulo máximo alcanzado en cada repetición.
@@ -21,8 +20,7 @@ repetition_angles = []
 
 
 def _compute_arm_angle(keypoints):
-    """
-    Calcula el ángulo del brazo izquierdo.
+    """Calcula el ángulo del brazo izquierdo.
 
     Parameters
     ----------
@@ -33,8 +31,8 @@ def _compute_arm_angle(keypoints):
     -------
     float
         Ángulo del brazo en grados.
-    """
 
+    """
     shoulder = keypoints[5][:2]
     wrist = keypoints[9][:2]
     hip = keypoints[11][:2]
@@ -61,8 +59,7 @@ def _compute_arm_angle(keypoints):
 
 
 def _angle_to_score(angle):
-    """
-    Convierte un ángulo a calificación porcentual.
+    """Convierte un ángulo a calificación porcentual.
 
     90 grados o más equivale a 100 %.
 
@@ -73,14 +70,13 @@ def _angle_to_score(angle):
     Returns
     -------
     float
-    """
 
+    """
     return min((angle / 90.0) * 100.0, 100.0)
 
 
 def evaluate_pose(keypoints):
-    """
-    Procesa un frame del video y actualiza el estado de repeticiones.
+    """Procesa un frame del video y actualiza el estado de repeticiones.
 
     Esta función debe llamarse en cada frame donde exista una pose.
 
@@ -92,8 +88,8 @@ def evaluate_pose(keypoints):
     Returns
     -------
     None
-    """
 
+    """
     global in_rep
     global max_angle
     global repetition_angles
@@ -105,11 +101,9 @@ def evaluate_pose(keypoints):
         max_angle = angle
 
     elif in_rep:
-
         max_angle = max(max_angle, angle)
 
         if angle < DOWN_THRESHOLD:
-
             if len(repetition_angles) < EXPECTED_REPS:
                 repetition_angles.append(max_angle)
 
@@ -119,22 +113,20 @@ def evaluate_pose(keypoints):
 
 
 def get_final_rating():
-    """
-    Calcula la calificación final del ejercicio.
+    """Calcula la calificación final del ejercicio.
 
     Returns
     -------
     dict
         Información completa de la evaluación.
+
     """
-
     if not repetition_angles:
-
         return {
             "repetitions_detected": 0,
             "angles": [],
             "scores": [],
-            "final_score": 0.0
+            "final_score": 0.0,
         }
 
     scores = [_angle_to_score(a) for a in repetition_angles]
@@ -145,15 +137,12 @@ def get_final_rating():
         "repetitions_detected": len(repetition_angles),
         "angles": repetition_angles,
         "scores": scores,
-        "final_score": final_score
+        "final_score": final_score,
     }
 
 
 def reset_session():
-    """
-    Reinicia el estado interno del evaluador.
-    """
-
+    """Reinicia el estado interno del evaluador."""
     global in_rep
     global max_angle
     global repetition_angles

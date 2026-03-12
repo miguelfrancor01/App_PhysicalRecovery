@@ -1,5 +1,4 @@
-"""
-Módulo contenedor de datos de sesión de ejercicio.
+"""Módulo contenedor de datos de sesión de ejercicio.
 
 Almacena y expone las estadísticas recopiladas durante una sesión
 de análisis biomecánico.
@@ -7,8 +6,7 @@ de análisis biomecánico.
 
 
 class SessionData:
-    """
-    Contenedor de estadísticas de una sesión de ejercicio.
+    """Contenedor de estadísticas de una sesión de ejercicio.
 
     Almacena los datos relevantes de la sesión como el nombre del
     ejercicio, repeticiones, duración y FPS promedio, y los expone
@@ -16,8 +14,7 @@ class SessionData:
     """
 
     def __init__(self):
-        """
-        Inicializa SessionData con valores por defecto.
+        """Inicializa SessionData con valores por defecto.
 
         Los datos de repeticiones y duración son simulados hasta que
         se integre la lógica de captura real desde el pipeline.
@@ -33,10 +30,10 @@ class SessionData:
         self.avg_fps = 28
 
     def get_summary(self):
-        """
-        Retorna un resumen de la sesión como diccionario.
+        """Retorna un resumen de la sesión como diccionario.
 
-        Returns:
+        Returns
+        -------
             dict: Diccionario con las claves:
                 - 'exercise' (str): Nombre del ejercicio.
                 - 'total_reps' (int): Total de repeticiones detectadas.
@@ -44,6 +41,7 @@ class SessionData:
                 - 'incorrect_reps' (int): Repeticiones incorrectas.
                 - 'duration' (int): Duración de la sesión en segundos.
                 - 'avg_fps' (float): FPS promedio durante la sesión.
+
         """
         return {
             "exercise": self.exercise_name,
@@ -51,5 +49,5 @@ class SessionData:
             "correct_reps": self.correct_reps,
             "incorrect_reps": self.incorrect_reps,
             "duration": self.duration_seconds,
-            "avg_fps": self.avg_fps
+            "avg_fps": self.avg_fps,
         }

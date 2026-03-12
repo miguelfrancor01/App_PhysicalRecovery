@@ -1,14 +1,14 @@
+from unittest.mock import MagicMock
+
 import numpy as np
 import torch
 from PIL import Image
-from unittest.mock import MagicMock
 
 from pose_module.pose_estimator import estimate_pose
 
 
 class DummyInputs(dict):
-    """
-    Clase auxiliar utilizada en pruebas unitarias para simular el objeto
+    """Clase auxiliar utilizada en pruebas unitarias para simular el objeto
     de entrada (`inputs`) que normalmente devuelve el processor de
     HuggingFace.
 
@@ -29,19 +29,19 @@ class DummyInputs(dict):
     """
 
     def __init__(self, *args, **kwargs):
-        """
-        Inicializa el diccionario de inputs simulado.
+        """Inicializa el diccionario de inputs simulado.
 
         Args:
+        ----
             *args: Argumentos posicionales heredados de `dict`.
             **kwargs: Argumentos nombrados heredados de `dict`.
+
         """
         super().__init__(*args, **kwargs)
         self.device_received = None
 
     def to(self, device):
-        """
-        Simula el método `.to(device)` utilizado por tensores de PyTorch.
+        """Simula el método `.to(device)` utilizado por tensores de PyTorch.
 
         En lugar de mover tensores a un dispositivo real, este método
         registra el dispositivo recibido para que las pruebas unitarias
@@ -49,19 +49,21 @@ class DummyInputs(dict):
         operación.
 
         Args:
+        ----
             device (str | torch.device): Dispositivo de cómputo.
 
         Returns:
+        -------
             DummyInputs: El mismo objeto, para imitar el comportamiento
             encadenado del método `.to()` en PyTorch.
+
         """
         self.device_received = device
         return self
 
 
 def test_estimate_pose_pipeline():
-    """
-    Prueba unitaria para verificar el flujo completo de `estimate_pose`.
+    """Prueba unitaria para verificar el flujo completo de `estimate_pose`.
 
     La prueba valida que el pipeline de estimación de pose ejecute
     correctamente las siguientes etapas:
@@ -74,7 +76,6 @@ def test_estimate_pose_pipeline():
     6. La función retorna correctamente el primer resultado de
        `pose_results`.
     """
-
     image = Image.fromarray(np.zeros((64, 64, 3), dtype=np.uint8))
     person_boxes = [[10, 10, 40, 50]]
     device = "cpu"
@@ -96,29 +97,20 @@ def test_estimate_pose_pipeline():
         person_boxes=person_boxes,
         processor=processor,
         model=model,
-        device=device
+        device=device,
     )
 
-    processor.assert_called_once_with(
-        image,
-        boxes=[person_boxes],
-        return_tensors="pt"
-    )
+    processor.assert_called_once_with(image, boxes=[person_boxes], return_tensors="pt")
 
     assert inputs_mock.device_received == device
 
     assert "dataset_index" in inputs_mock
-    assert torch.equal(
-        inputs_mock["dataset_index"],
-        torch.tensor([0], device=device)
-    )
+    assert torch.equal(inputs_mock["dataset_index"], torch.tensor([0], device=device))
 
     model.assert_called_once_with(**inputs_mock)
 
     processor.post_process_pose_estimation.assert_called_once_with(
-        {"logits": "fake"},
-        boxes=[person_boxes],
-        threshold=0.3
+        {"logits": "fake"}, boxes=[person_boxes], threshold=0.3
     )
 
     assert result == {"keypoints": [[1, 2], [3, 4]], "scores": [0.9, 0.8]}

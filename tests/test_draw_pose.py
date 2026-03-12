@@ -4,8 +4,7 @@ from pose_module.draw_pose import draw_pose
 
 
 def test_draw_pose_dibuja_keypoints_y_conexiones_respetando_threshold():
-    """
-    Prueba unitaria para verificar el comportamiento de `draw_pose`.
+    """Prueba unitaria para verificar el comportamiento de `draw_pose`.
 
     Esta prueba valida que la función:
 
@@ -16,7 +15,6 @@ def test_draw_pose_dibuja_keypoints_y_conexiones_respetando_threshold():
     El escenario de prueba incluye varios keypoints válidos que deben
     dibujarse y un keypoint con baja confianza que debe ser ignorado.
     """
-
     # Imagen negra base
     image = np.zeros((120, 120, 3), dtype=np.uint8)
     original = image.copy()
@@ -25,23 +23,29 @@ def test_draw_pose_dibuja_keypoints_y_conexiones_respetando_threshold():
     # - 0 a 4 pertenecen a "head"
     # - 5 entra en "arms" y también participa en conexiones válidas
     #   de torso/brazos, pero lo dejamos bajo threshold
-    keypoints = np.array([
-        [10, 10],   # 0
-        [20, 10],   # 1
-        [10, 20],   # 2
-        [20, 20],   # 3
-        [15, 30],   # 4
-        [60, 60],   # 5 
-    ], dtype=np.float32)
+    keypoints = np.array(
+        [
+            [10, 10],  # 0
+            [20, 10],  # 1
+            [10, 20],  # 2
+            [20, 20],  # 3
+            [15, 30],  # 4
+            [60, 60],  # 5
+        ],
+        dtype=np.float32,
+    )
 
-    scores = np.array([
-        0.95,  # 0
-        0.95,  # 1
-        0.95,  # 2
-        0.95,  # 3
-        0.95,  # 4
-        0.10,  # 5 -> no debería dibujarse
-    ], dtype=np.float32)
+    scores = np.array(
+        [
+            0.95,  # 0
+            0.95,  # 1
+            0.95,  # 2
+            0.95,  # 3
+            0.95,  # 4
+            0.10,  # 5 -> no debería dibujarse
+        ],
+        dtype=np.float32,
+    )
 
     result = draw_pose(image, keypoints, scores, threshold=0.3)
 

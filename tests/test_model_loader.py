@@ -11,8 +11,7 @@ def test_load_models_carga_modelos_y_procesadores(
     mock_det_model,
     mock_pose_model,
 ):
-    """
-    Prueba unitaria para verificar el comportamiento de `load_models`.
+    """Prueba unitaria para verificar el comportamiento de `load_models`.
 
     Esta prueba valida que la función:
 
@@ -25,7 +24,6 @@ def test_load_models_carga_modelos_y_procesadores(
     objetos simulados (`MagicMock`) que imitan el comportamiento de los
     processors y modelos.
     """
-
     # Simular processors
     det_processor = MagicMock()
     pose_processor = MagicMock()

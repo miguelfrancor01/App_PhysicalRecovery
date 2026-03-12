@@ -26,10 +26,192 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.2"
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-v"
+
+[tool.ruff]
+line-length = 88
+
+# Directorios y archivos excluidos del análisis.
+# Se excluyen carpetas de entornos virtuales, caché y archivos generados.
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "*.egg-info",
+    "build",
+    "dist",
+    # Archivos generados por gRPC (no son código propio del proyecto)
+    "pose_pb2_grpc.py",
+    "pose_pb2.py",
+]
+
+# -----------------------------------------------------------------------------
+# Configuración del linter de Ruff
+# -----------------------------------------------------------------------------
+[tool.ruff.lint]
+
+# Reglas activas. Cada prefijo corresponde a un plugin:
+#   E / W  → pycodestyle      (errores y advertencias de estilo PEP 8)
+#   F      → pyflakes          (variables no usadas, imports no usados, etc.)
+#   I      → isort             (orden y agrupación de imports)
+#   N      → pep8-naming       (convenciones de nombres: clases, funciones, vars)
+#   D      → pydocstyle        (presencia y formato de docstrings)
+#   UP     → pyupgrade         (modernización de sintaxis para Python 3.10+)
+#   B      → flake8-bugbear    (errores comunes y patrones problemáticos)
+#   SIM    → flake8-simplify   (simplificaciones de código)
+#   PTH    → flake8-use-pathlib (preferir pathlib sobre os.path)
+select = ["E", "W", "F", "I", "N", "D", "UP", "B", "SIM", "PTH"]
+
+
+# Reglas ignoradas con justificación explícita:
+ignore = [
+    # D100: docstring en módulos públicos.
+    # Los módulos de la capa gRPC (pb2) están excluidos, pero algunos
+    # módulos utilitarios internos no requieren docstring de módulo.
+    "D100",
+
+    # D104: docstring en paquetes (__init__.py).
+    # Los __init__.py del proyecto son archivos de re-exportación simples.
+    "D104",
+
+    # D203: una línea en blanco antes del docstring de clase.
+    # Incompatible con D211 (sin línea en blanco). Se usa D211.
+    "D203",
+
+    # D213: resumen del docstring en la segunda línea.
+    # Incompatible con D212 (resumen en primera línea). Se usa D212.
+    "D213",
+
+    # B008: no llamar funciones en argumentos por defecto.
+    # Necesario para algunos patrones de FastAPI/Streamlit si se usan.
+    "B008",
+
+    # SIM108: usar operador ternario en lugar de if-else.
+    # En el contexto de ML, los if-else explícitos son más legibles.
+    "SIM108",
+
+       # --- Reglas ignoradas permanentemente ---
+
+    # N802: nombre de función en mayúsculas (StreamPose lo requiere gRPC por contrato .proto)
+    "N802",
+
+    # --- Reglas ignoradas temporalmente hasta refactor del equipo ---
+
+    # PTH: reemplazar os.path por pathlib (afecta app.py, grpc_server.py,
+    # mlflow_experiments.py, report_generator.py)
+    "PTH100", "PTH103", "PTH107", "PTH110", "PTH118",
+    "PTH119", "PTH120", "PTH123",
+
+    # D: problemas de formato en docstrings
+    "D100",   # módulos sin docstring
+    "D101",   # clases sin docstring
+    "D102",   # métodos públicos sin docstring
+    "D103",   # funciones públicas sin docstring
+    "D104",   # paquetes sin docstring
+    "D107",   # __init__ sin docstring
+    "D200",   # docstring de una línea no está en una sola línea
+    "D203",   # incompatible con D211
+    "D205",   # falta línea en blanco entre resumen y descripción
+    "D213",   # incompatible con D212
+    "D400",   # primera línea debe terminar con punto
+    "D402",   # primera línea no debe ser la firma de la función
+    "D415",   # primera línea debe terminar con punto o signo de puntuación
+    "D417",   # argumento sin descripción en docstring
+
+    # E501: líneas demasiado largas en report_generator.py y otros
+    "E501",
+
+    # N806: variables en mayúsculas dentro de funciones
+    # (BASE_DIR, MARGIN_LEFT, etc. en report_generator.py)
+    "N806",
+
+    # SIM102: usar un solo if en lugar de if anidados
+    "SIM102",
+
+    # SIM105: usar contextlib.suppress en lugar de try-except-pass
+    "SIM105",
+
+    # F401: imports no usados en pose_module/__init__.py
+    "F401",
+
+    # F821: variable no definida en benchmark_mlflow.py
+    "F821",
+
+    # E402: imports no al inicio del archivo (grpc_server.py lo requiere
+    # por la manipulación del sys.path antes de importar módulos propios)
+    "E402",
+]
+
+# Reglas que se aplican solo a archivos de tests
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    # D103: docstring en funciones públicas.
+    # Las funciones de test tienen nombres descriptivos que documentan
+    # su propósito sin necesitar docstring adicional.
+    "D103",
+
+    # S101: uso de assert.
+    # Los asserts son el mecanismo estándar de pytest.
+    "S101",
+]
+
+# Excluir también los archivos de experimentos MLflow de la regla D103,
+# ya que las funciones de experimento tienen docstrings extensos propios.
+"mlflow_experiments.py" = []
+
+
+# -----------------------------------------------------------------------------
+# Configuración del formateador de Ruff (equivalente a black)
+# -----------------------------------------------------------------------------
+[tool.ruff.format]
+
+# Usar comillas dobles en strings (estándar PEP 8 y black)
+quote-style = "double"
+
+# Usar espacios para indentación (nunca tabs)
+indent-style = "space"
+
+# Mantener las comas finales en estructuras multilínea.
+# Facilita los diffs en git al agregar elementos a listas/dicts.
+skip-magic-trailing-comma = false
+
+# Detectar automáticamente el estilo de fin de línea del archivo
+line-ending = "auto"
+
+
+# -----------------------------------------------------------------------------
+# Configuración de isort a través de Ruff
+# Define cómo se agrupan y ordenan los imports
+# -----------------------------------------------------------------------------
+[tool.ruff.lint.isort]
+
+# Número de líneas en blanco entre secciones de imports
+lines-after-imports = 2
+
+# Sección de imports de primera parte (código propio del proyecto).
+# Agrega aquí los nombres de los paquetes internos de tu proyecto.
+known-first-party = [
+    "pose_module",
+    "report_module",
+]
+
+# Sección de imports de terceros conocidos relacionados con ML/DL.
+# Ruff los agrupa juntos en la sección "third-party".
+known-third-party = [
+    "torch",
+    "transformers",
+    "mlflow",
+    "cv2",
+    "numpy",
+    "PIL",
+    "grpc",
+    "streamlit",
+]

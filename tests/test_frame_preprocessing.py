@@ -1,12 +1,10 @@
 import numpy as np
 from PIL import Image
-
 from preprocessing.frame_preprocessing import procesar_frame_para_modelo
 
 
 def test_procesar_frame_para_modelo_realiza_pipeline_completo_correctamente():
-    """
-    Prueba unitaria para verificar el flujo completo de
+    """Prueba unitaria para verificar el flujo completo de
     `procesar_frame_para_modelo`.
 
     Esta prueba valida que el pipeline de preprocesamiento ejecute
@@ -22,7 +20,6 @@ def test_procesar_frame_para_modelo_realiza_pipeline_completo_correctamente():
     También se verifica que el redimensionamiento mantenga la relación
     de aspecto y que la conversión de canales BGR->RGB sea correcta.
     """
-
     # Frame BGR sintético de 100x200 (ancho mayor al objetivo)
     frame = np.zeros((100, 200, 3), dtype=np.uint8)
 

@@ -1,5 +1,4 @@
-"""
-mlflow_experiments.py
+"""mlflow_experiments.py
 =====================
 Experimentos MLflow para el proyecto de Pose Estimation con ViTPose+.
 
@@ -39,6 +38,7 @@ from transformers import (
     VitPoseForPoseEstimation,
 )
 
+
 # ---------------------------------------------------------------------------
 # Constantes globales
 # ---------------------------------------------------------------------------
@@ -71,6 +71,7 @@ def _get_device() -> str:
     -------
     str
         ``"cuda"`` si hay GPU disponible, ``"cpu"`` en caso contrario.
+
     """
     return "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -85,6 +86,7 @@ def _load_test_image() -> Image.Image:
     -------
     PIL.Image.Image
         Imagen en formato RGB lista para ser procesada por los modelos.
+
     """
     if os.path.exists(TEST_IMAGE_PATH):
         frame = cv2.imread(TEST_IMAGE_PATH)
@@ -111,6 +113,7 @@ def _boxes_to_coco(boxes_voc: np.ndarray) -> np.ndarray:
     -------
     numpy.ndarray
         Array de forma ``(N, 4)`` con bounding boxes en formato COCO.
+
     """
     boxes = boxes_voc.copy()
     boxes[:, 2] = boxes[:, 2] - boxes[:, 0]
@@ -149,6 +152,7 @@ def _detect(
     numpy.ndarray
         Array de forma ``(N, 4)`` con bounding boxes en formato COCO.
         Puede ser un array vacio si no se detecta ninguna persona.
+
     """
     inputs = processor(images=image, return_tensors="pt").to(device)
 
@@ -206,6 +210,7 @@ def _estimate_pose(
     list[dict]
         Lista de diccionarios con los keypoints y scores de cada persona
         detectada, tal como los retorna ``post_process_pose_estimation``.
+
     """
     inputs = processor(image, boxes=[person_boxes], return_tensors="pt").to(device)
     inputs["dataset_index"] = torch.tensor([dataset_index], device=device)
@@ -239,6 +244,7 @@ def _compute_arm_angle(keypoints) -> float:
     float
         Angulo del brazo en grados. Retorna ``0.0`` si alguno de los
         vectores tiene norma cero.
+
     """
     kps = np.array([[float(kp[0]), float(kp[1])] for kp in keypoints])
     shoulder = kps[5]
@@ -272,6 +278,7 @@ def _save_temp_image(image: Image.Image, filename: str = "result.jpg") -> str:
     -------
     str
         Ruta absoluta al archivo guardado.
+
     """
     path = os.path.join(tempfile.gettempdir(), filename)
     image.save(path)
@@ -320,9 +327,7 @@ def experimento_1_threshold_deteccion() -> None:
     image = _load_test_image()
     thresholds = [0.2, 0.3, 0.4, 0.5]
 
-    processor = AutoProcessor.from_pretrained(
-        DETECTOR_MODELS["rtdetr_r50vd_coco_o365"]
-    )
+    processor = AutoProcessor.from_pretrained(DETECTOR_MODELS["rtdetr_r50vd_coco_o365"])
     model = RTDetrForObjectDetection.from_pretrained(
         DETECTOR_MODELS["rtdetr_r50vd_coco_o365"]
     ).to(device)
@@ -441,9 +446,7 @@ def experimento_2_threshold_keypoints() -> None:
             )
             elapsed_ms = (time.perf_counter() - t0) * 1000
 
-            person = (
-                pose_results[0] if isinstance(pose_results, list) else pose_results
-            )
+            person = pose_results[0] if isinstance(pose_results, list) else pose_results
             kps = person["keypoints"]
             scores = person["scores"]
 
@@ -589,9 +592,7 @@ def experimento_3_preprocesamiento() -> None:
                 continue
 
             image_pil = resultado["image_pil"]
-            boxes = _detect(
-                image_pil, det_processor, det_model, device, threshold=0.3
-            )
+            boxes = _detect(image_pil, det_processor, det_model, device, threshold=0.3)
 
             angle = 0.0
             kps_count = 0
@@ -606,9 +607,7 @@ def experimento_3_preprocesamiento() -> None:
                     kp_threshold=0.3,
                 )
                 person = (
-                    pose_results[0]
-                    if isinstance(pose_results, list)
-                    else pose_results
+                    pose_results[0] if isinstance(pose_results, list) else pose_results
                 )
                 kps_count = len(person["keypoints"])
                 angle = _compute_arm_angle(person["keypoints"])
@@ -618,9 +617,7 @@ def experimento_3_preprocesamiento() -> None:
             mlflow.log_metric("pipeline_time_ms", round(elapsed_ms, 2))
             mlflow.log_metric("arm_angle_deg", round(angle, 2))
             mlflow.log_metric("keypoints_detected", kps_count)
-            mlflow.log_metric(
-                "frame_width_px", resultado["frame_procesado"].shape[1]
-            )
+            mlflow.log_metric("frame_width_px", resultado["frame_procesado"].shape[1])
 
             pre_path = _save_temp_image(image_pil, "preprocessed_frame.jpg")
             mlflow.log_artifact(pre_path, artifact_path="preprocessed")
@@ -708,6 +705,7 @@ def experimento_4_grpc_workers() -> None:
         -------
         float
             Tiempo de procesamiento del frame en milisegundos.
+
         """
         t0 = time.perf_counter()
         boxes = _detect(image, det_processor, det_model, device, threshold=0.3)
@@ -732,9 +730,7 @@ def experimento_4_grpc_workers() -> None:
 
             t_total_start = time.perf_counter()
             with futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
-                latencies = list(
-                    executor.map(process_single_frame, range(num_frames))
-                )
+                latencies = list(executor.map(process_single_frame, range(num_frames)))
             total_ms = (time.perf_counter() - t_total_start) * 1000
 
             avg_lat = float(np.mean(latencies))
@@ -860,9 +856,7 @@ def experimento_5_comparacion_detectores() -> None:
                 )
                 pose_ms = (time.perf_counter() - t_pose) * 1000
                 person = (
-                    pose_results[0]
-                    if isinstance(pose_results, list)
-                    else pose_results
+                    pose_results[0] if isinstance(pose_results, list) else pose_results
                 )
                 kps_count = len(person["keypoints"])
                 angle = _compute_arm_angle(person["keypoints"])
@@ -942,6 +936,7 @@ def main() -> None:
     Ver resultados en la UI de MLflow::
 
         mlflow ui
+
     """
     parser = argparse.ArgumentParser(
         description="Corre los experimentos MLflow del proyecto de Pose Estimation."

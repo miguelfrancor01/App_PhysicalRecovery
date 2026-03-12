@@ -1,14 +1,14 @@
+from unittest.mock import MagicMock
+
 import numpy as np
 import torch
 from PIL import Image
-from unittest.mock import MagicMock
 
 from pose_module.detector import detect_persons
 
 
 class DummyInputs(dict):
-    """
-    Clase auxiliar utilizada en pruebas unitarias para simular el objeto de
+    """Clase auxiliar utilizada en pruebas unitarias para simular el objeto de
     entrada (`inputs`) que normalmente devuelve el processor de HuggingFace.
 
     En el pipeline real de estimación de pose, el processor genera un
@@ -28,38 +28,40 @@ class DummyInputs(dict):
     """
 
     def __init__(self, *args, **kwargs):
-        """
-        Inicializa el diccionario de inputs simulado.
+        """Inicializa el diccionario de inputs simulado.
 
         Args:
+        ----
             *args: Argumentos posicionales heredados de dict.
             **kwargs: Argumentos nombrados heredados de dict.
+
         """
         super().__init__(*args, **kwargs)
         self.device_received = None
 
     def to(self, device):
-        """
-        Simula el método `.to(device)` utilizado por tensores de PyTorch.
+        """Simula el método `.to(device)` utilizado por tensores de PyTorch.
 
         En lugar de mover tensores a un dispositivo, este método simplemente
         registra el dispositivo recibido para que las pruebas unitarias
         puedan verificar que el pipeline realiza correctamente la operación.
 
         Args:
+        ----
             device (str | torch.device): Dispositivo de cómputo.
 
         Returns:
+        -------
             DummyInputs: El mismo objeto, para imitar el comportamiento
             encadenado de `.to()` en PyTorch.
+
         """
         self.device_received = device
         return self
 
 
 def test_detect_persons_filtra_personas_y_convierte_cajas_a_xywh():
-    """
-    Prueba unitaria para verificar el comportamiento principal de
+    """Prueba unitaria para verificar el comportamiento principal de
     `detect_persons`.
 
     Esta prueba valida que la función:
@@ -73,7 +75,6 @@ def test_detect_persons_filtra_personas_y_convierte_cajas_a_xywh():
     Además, verifica que se utilicen correctamente el dispositivo de
     cómputo y los parámetros de postprocesamiento del detector.
     """
-
     image = Image.fromarray(np.zeros((100, 200, 3), dtype=np.uint8))
     device = "cpu"
 
@@ -88,22 +89,23 @@ def test_detect_persons_filtra_personas_y_convierte_cajas_a_xywh():
     # Dos cajas:
     # - la primera con label 0 (persona)
     # - la segunda con label 2 (otra clase, debe descartarse)
-    boxes = torch.tensor([
-        [10.0, 20.0, 50.0, 80.0],   # persona
-        [100.0, 30.0, 160.0, 90.0], # no persona
-    ])
+    boxes = torch.tensor(
+        [
+            [10.0, 20.0, 50.0, 80.0],  # persona
+            [100.0, 30.0, 160.0, 90.0],  # no persona
+        ]
+    )
     labels = torch.tensor([0, 2])
 
-    processor.post_process_object_detection.return_value = [{
-        "boxes": boxes,
-        "labels": labels,
-    }]
+    processor.post_process_object_detection.return_value = [
+        {
+            "boxes": boxes,
+            "labels": labels,
+        }
+    ]
 
     result = detect_persons(
-        image=image,
-        processor=processor,
-        model=model,
-        device=device
+        image=image, processor=processor, model=model, device=device
     )
 
     # Verifica llamada al processor
@@ -120,8 +122,7 @@ def test_detect_persons_filtra_personas_y_convierte_cajas_a_xywh():
     _, kwargs = processor.post_process_object_detection.call_args
     assert kwargs["threshold"] == 0.3
     assert torch.equal(
-        kwargs["target_sizes"],
-        torch.tensor([(image.height, image.width)])
+        kwargs["target_sizes"], torch.tensor([(image.height, image.width)])
     )
 
     # Solo debe quedar la caja de la persona
