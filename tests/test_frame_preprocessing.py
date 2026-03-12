@@ -6,14 +6,21 @@ from preprocessing.frame_preprocessing import procesar_frame_para_modelo
 
 def test_procesar_frame_para_modelo_realiza_pipeline_completo_correctamente():
     """
-    Verifica que procesar_frame_para_modelo ejecute correctamente
-    el flujo principal de preprocesamiento:
-    - validación exitosa
-    - redimensionamiento
-    - suavizado
-    - conversión BGR -> RGB
-    - conversión RGB -> PIL
-    - retorno de estructura esperada
+    Prueba unitaria para verificar el flujo completo de
+    `procesar_frame_para_modelo`.
+
+    Esta prueba valida que el pipeline de preprocesamiento ejecute
+    correctamente las siguientes etapas:
+
+    1. Validación exitosa del frame de entrada.
+    2. Redimensionamiento de la imagen conservando proporciones.
+    3. Aplicación de suavizado opcional.
+    4. Conversión del espacio de color BGR -> RGB.
+    5. Conversión de la imagen RGB a formato PIL.
+    6. Retorno de la estructura de salida esperada.
+
+    También se verifica que el redimensionamiento mantenga la relación
+    de aspecto y que la conversión de canales BGR->RGB sea correcta.
     """
 
     # Frame BGR sintético de 100x200 (ancho mayor al objetivo)

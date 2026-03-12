@@ -1,4 +1,4 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from pose_module.model_loader import load_models
 
@@ -6,13 +6,24 @@ from pose_module.model_loader import load_models
 @patch("pose_module.model_loader.VitPoseForPoseEstimation")
 @patch("pose_module.model_loader.RTDetrForObjectDetection")
 @patch("pose_module.model_loader.AutoProcessor")
-def test_load_models_carga_modelos_y_procesadores(mock_processor, mock_det_model, mock_pose_model):
+def test_load_models_carga_modelos_y_procesadores(
+    mock_processor,
+    mock_det_model,
+    mock_pose_model,
+):
     """
-    Verifica que load_models:
-    - cargue los processors
-    - cargue los modelos
-    - envíe los modelos al device correcto
-    - retorne los 4 objetos esperados
+    Prueba unitaria para verificar el comportamiento de `load_models`.
+
+    Esta prueba valida que la función:
+
+    - cargue correctamente los processors mediante `AutoProcessor`,
+    - cargue los modelos de detección y estimación de pose,
+    - envíe ambos modelos al dispositivo de cómputo especificado,
+    - retorne los cuatro objetos esperados en el orden correcto.
+
+    Para evitar descargar modelos reales desde HuggingFace, se utilizan
+    objetos simulados (`MagicMock`) que imitan el comportamiento de los
+    processors y modelos.
     """
 
     # Simular processors
