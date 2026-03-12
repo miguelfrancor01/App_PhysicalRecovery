@@ -1,4 +1,4 @@
-.PHONY: server client clear
+.PHONY: server client clear serverMl experiments
 server:
 	.venv/Scripts/python src/grpc_server.py
 client:

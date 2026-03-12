@@ -1,5 +1,4 @@
-"""
-Interfaz gráfica de la aplicación App Physical Recovery.
+"""Interfaz gráfica de la aplicación App Physical Recovery.
 
 Este módulo implementa la interfaz de usuario con Streamlit y actúa como
 cliente del servidor gRPC encargado de la inferencia de visión por
@@ -37,6 +36,7 @@ import grpc
 import numpy as np
 import streamlit as st
 
+
 # ---------------------------------------------------------------------
 # CONFIGURACIÓN DE RUTAS ABSOLUTAS
 # ---------------------------------------------------------------------
@@ -53,14 +53,14 @@ try:
     import pose_pb2
     import pose_pb2_grpc
 
-    from pose_module.draw_pose import draw_pose
-    from report_module.report_generator import generate_report
-    from report_module.session_data import SessionData
-
     # Lógica local de evaluación del ejercicio.
     # A partir de los keypoints recibidos del servidor gRPC se calculan
     # repeticiones, ángulos y el puntaje final de la sesión.
     from pose_rating import evaluate_pose, get_final_rating, reset_session
+
+    from pose_module.draw_pose import draw_pose
+    from report_module.report_generator import generate_report
+    from report_module.session_data import SessionData
 
 except ImportError as e:
     st.error(f"Error de dependencias internas: {e}")
@@ -129,8 +129,7 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════════
 if st.session_state.fase == "config":
     st.info(
-        "Cargue un video en el panel lateral para comenzar el análisis "
-        "biomecánico."
+        "Cargue un video en el panel lateral para comenzar el análisis " "biomecánico."
     )
 
     if uploaded_file is not None:
@@ -233,9 +232,7 @@ elif st.session_state.fase == "procesando":
                     # a partir del evaluador local del ejercicio.
                     reps_local = get_final_rating()["repetitions_detected"]
 
-                    placeholder.image(
-                        cv2.cvtColor(img_disp, cv2.COLOR_BGR2RGB)
-                    )
+                    placeholder.image(cv2.cvtColor(img_disp, cv2.COLOR_BGR2RGB))
                     m_reps.metric("Repeticiones", reps_local)
                     m_angle.metric("Ángulo actual", f"{res.current_angle:.1f}°")
 
@@ -326,7 +323,7 @@ elif st.session_state.fase == "finalizado":
         header_cols[1].markdown("**Ángulo máximo**")
         header_cols[2].markdown("**Score**")
 
-        for i, (ang, sc) in enumerate(zip(angles, scores)):
+        for i, (ang, sc) in enumerate(zip(angles, scores, strict=False)):
             row_cols = st.columns(3)
             row_cols[0].write(f"Rep. {i + 1}")
             row_cols[1].write(f"{ang:.2f}°")

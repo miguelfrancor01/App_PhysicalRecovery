@@ -6,8 +6,7 @@ import pytest
 
 
 def test_stream_pose_generates_valid_response(monkeypatch):
-    """
-    Prueba unitaria para validar el flujo principal de `StreamPose`.
+    """Prueba unitaria para validar el flujo principal de `StreamPose`.
 
     El objetivo de esta prueba es verificar el comportamiento del servidor
     gRPC cuando recibe un frame válido desde un cliente.
@@ -30,7 +29,6 @@ def test_stream_pose_generates_valid_response(monkeypatch):
     - se calcule el ángulo del brazo,
     - el servidor genere una respuesta `PoseResponse` consistente.
     """
-
     # ------------------------------------------------------------------
     # Crear módulos simulados para evitar cargar dependencias reales
     # ------------------------------------------------------------------
@@ -46,17 +44,15 @@ def test_stream_pose_generates_valid_response(monkeypatch):
     )
 
     detector_mod = types.ModuleType("pose_module.detector")
-    detector_mod.detect_persons = (
-        lambda image, processor, model, device: np.array([[10, 20, 30, 40]])
+    detector_mod.detect_persons = lambda image, processor, model, device: np.array(
+        [[10, 20, 30, 40]]
     )
 
     pose_estimator_mod = types.ModuleType("pose_module.pose_estimator")
-    pose_estimator_mod.estimate_pose = (
-        lambda image, boxes, processor, model, device: {
-            "keypoints": [[100, 200], [150, 250]],
-            "scores": [0.9, 0.8],
-        }
-    )
+    pose_estimator_mod.estimate_pose = lambda image, boxes, processor, model, device: {
+        "keypoints": [[100, 200], [150, 250]],
+        "scores": [0.9, 0.8],
+    }
 
     pose_rating_mod = types.ModuleType("pose_rating")
     pose_rating_mod._compute_arm_angle = lambda keypoints: 95.0
@@ -122,9 +118,7 @@ def test_stream_pose_generates_valid_response(monkeypatch):
     servicer = PoseServicer()
 
     class FakeRequest:
-        """
-        Simula un mensaje `PoseRequest` recibido por el servidor gRPC.
-        """
+        """Simula un mensaje `PoseRequest` recibido por el servidor gRPC."""
 
         def __init__(self):
             self.image_data = b"fake_image_bytes"

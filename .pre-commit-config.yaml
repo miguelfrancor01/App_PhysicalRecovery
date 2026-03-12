@@ -1,0 +1,98 @@
+# .pre-commit-config.yaml
+# =============================================================================
+# Configuración de pre-commit para el proyecto de Pose Estimation con ViTPose+.
+#
+# Define los hooks que se ejecutan automáticamente antes de cada `git commit`,
+# asegurando calidad y consistencia del código en todo el proyecto.
+#
+# Instalación:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Ejecución manual sobre todos los archivos:
+#   pre-commit run --all-files
+#
+# Ejecución manual de un hook específico:
+#   pre-commit run ruff --all-files
+#   pre-commit run ruff-format --all-files
+#
+# Actualizar hooks a sus últimas versiones:
+#   pre-commit autoupdate
+# =============================================================================
+
+# Versión mínima de pre-commit requerida
+minimum_pre_commit_version: "3.0.0"
+
+repos:
+
+  # ---------------------------------------------------------------------------
+  # Hooks generales de saneamiento de archivos
+  # Repositorio oficial: https://github.com/pre-commit/pre-commit-hooks
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+
+      # Elimina espacios en blanco al final de cada línea
+      - id: trailing-whitespace
+
+      # Asegura que todos los archivos terminen con una línea en blanco
+      - id: end-of-file-fixer
+
+      # Valida que los archivos YAML tengan sintaxis correcta
+      - id: check-yaml
+
+      # Valida que los archivos TOML tengan sintaxis correcta
+      # Aplica sobre pyproject.toml y cualquier otro .toml del proyecto
+      - id: check-toml
+
+      # Previene hacer commit de archivos demasiado grandes (límite: 1 MB)
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+
+      # Detecta claves duplicadas en archivos JSON
+      - id: check-json
+
+      # Previene commits directos a ramas protegidas (main / master)
+      - id: no-commit-to-branch
+        args: ["--branch", "main", "--branch", "master"]
+
+  # ---------------------------------------------------------------------------
+  # Ruff: linter y formateador para Python
+  # Reemplaza flake8, black, isort y pylint en una sola herramienta.
+  # Repositorio oficial: https://github.com/astral-sh/ruff-pre-commit
+  # La configuración de reglas se define en pyproject.toml bajo [tool.ruff]
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.9
+    hooks:
+
+      # Linter: detecta errores de estilo, imports desordenados, código
+      # muerto, convenciones de docstrings y más, según las reglas activas
+      # en pyproject.toml. Aplica correcciones automáticas cuando es posible.
+      - id: ruff
+        args: ["--fix"]
+        types: [python]
+
+      # Formateador: equivalente a black, aplica formato consistente
+      # en todo el código Python del proyecto.
+      - id: ruff-format
+        types: [python]
+
+  # ---------------------------------------------------------------------------
+  # pytest: ejecuta la suite de tests antes de cada commit
+  # Previene commits que rompan tests existentes.
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        # Corre únicamente los tests, sin capturar output (-s) para ver
+        # prints en caso de fallo, con reporte verbose (-v)
+        entry: uv run pytest -v --tb=short
+        language: system
+        types: [python]
+        # Ejecuta el hook solo cuando se modifiquen archivos Python,
+        # evitando correr toda la suite en cambios de documentación o YAML
+        pass_filenames: false
+        always_run: false

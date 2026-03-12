@@ -1,47 +1,55 @@
-"""
-Módulo de generación de reportes PDF para App Physical Recovery.
+"""Módulo de generación de reportes PDF para App Physical Recovery.
 
 Construye un reporte clínico en formato PDF usando ReportLab, incluyendo
 información del paciente, resultados del ejercicio, tabla de repeticiones
 con ángulos y puntuaciones, y una captura del frame analizado.
 """
 
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.lib.units import mm
-from reportlab.pdfgen import canvas
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 import datetime
 import os
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
+from reportlab.platypus import (
+    HRFlowable,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 
 # =================================
 # PALETA DE COLORES MÉDICOS
 # =================================
-AZUL_PRIMARIO    = colors.HexColor("#1A3C6E")   # Azul oscuro institucional
-AZUL_SECUNDARIO  = colors.HexColor("#2E6DA4")   # Azul medio
-AZUL_CLARO       = colors.HexColor("#D6E8F7")   # Azul muy claro para fondos
-GRIS_TEXTO       = colors.HexColor("#2C2C2C")   # Casi negro para texto
-GRIS_SUAVE       = colors.HexColor("#F4F7FB")   # Fondo de secciones
-BLANCO           = colors.white
-VERDE_EXITO      = colors.HexColor("#1E7E4A")
-ACENTO           = colors.HexColor("#4A90D9")   # Azul brillante para detalles
+AZUL_PRIMARIO = colors.HexColor("#1A3C6E")  # Azul oscuro institucional
+AZUL_SECUNDARIO = colors.HexColor("#2E6DA4")  # Azul medio
+AZUL_CLARO = colors.HexColor("#D6E8F7")  # Azul muy claro para fondos
+GRIS_TEXTO = colors.HexColor("#2C2C2C")  # Casi negro para texto
+GRIS_SUAVE = colors.HexColor("#F4F7FB")  # Fondo de secciones
+BLANCO = colors.white
+VERDE_EXITO = colors.HexColor("#1E7E4A")
+ACENTO = colors.HexColor("#4A90D9")  # Azul brillante para detalles
 
 
 def _draw_header(c, width, height):
-    """
-    Dibuja el encabezado institucional en la parte superior del PDF.
+    """Dibuja el encabezado institucional en la parte superior del PDF.
 
     Renderiza una banda azul con el título de la aplicación, el logo
     institucional (si existe), el subtítulo del sistema, la fecha actual
     y una nota de generación automática.
 
     Args:
+    ----
         c: Objeto canvas de ReportLab sobre el que se dibuja.
         width (float): Ancho de la página en puntos.
         height (float): Alto de la página en puntos.
+
     """
     # Banda azul superior
     c.setFillColor(AZUL_PRIMARIO)
@@ -72,7 +80,6 @@ def _draw_header(c, width, height):
     logo_path = os.path.join(BASE_DIR, "logos", "Pdf logo.png")
 
     if os.path.exists(logo_path):
-
         logo_size = 40
 
         text_width = c.stringWidth(title, "Helvetica-Bold", 18)
@@ -83,12 +90,7 @@ def _draw_header(c, width, height):
         logo_y = title_y - (logo_size / 2)
 
         c.drawImage(
-            logo_path,
-            logo_x,
-            logo_y,
-            width=logo_size,
-            height=logo_size,
-            mask='auto'
+            logo_path, logo_x, logo_y, width=logo_size, height=logo_size, mask="auto"
         )
 
     # =========================
@@ -112,31 +114,36 @@ def _draw_header(c, width, height):
 
 
 def _draw_footer(c, width):
-    """
-    Dibuja el pie de página institucional en la parte inferior del PDF.
+    """Dibuja el pie de página institucional en la parte inferior del PDF.
 
     Renderiza una banda azul con el texto de uso clínico interno
     centrado horizontalmente.
 
     Args:
+    ----
         c: Objeto canvas de ReportLab sobre el que se dibuja.
         width (float): Ancho de la página en puntos.
+
     """
     c.setFillColor(AZUL_PRIMARIO)
     c.rect(0, 0, width, 30, fill=True, stroke=False)
     c.setFillColor(colors.HexColor("#A8C8E8"))
     c.setFont("Helvetica", 8)
-    c.drawCentredString(width / 2, 11, "Documento generado por App Physical Recovery  •  Uso clínico interno")
+    c.drawCentredString(
+        width / 2,
+        11,
+        "Documento generado por App Physical Recovery  •  Uso clínico interno",
+    )
 
 
 def _section_title(c, x, y, text, width):
-    """
-    Dibuja un título de sección con banda de color azul claro y barra lateral.
+    """Dibuja un título de sección con banda de color azul claro y barra lateral.
 
     Renderiza un bloque decorativo con fondo azul claro, una barra
     izquierda en azul secundario y el texto del título en mayúsculas.
 
     Args:
+    ----
         c: Objeto canvas de ReportLab sobre el que se dibuja.
         x (float): Posición horizontal de inicio en puntos.
         y (float): Posición vertical actual en puntos.
@@ -144,7 +151,9 @@ def _section_title(c, x, y, text, width):
         width (float): Ancho de la página en puntos.
 
     Returns:
+    -------
         float: Nueva posición vertical después del título (y - 30).
+
     """
     c.setFillColor(AZUL_CLARO)
     c.rect(x - 8, y - 6, width - x - 32, 22, fill=True, stroke=False)
@@ -161,13 +170,13 @@ def _section_title(c, x, y, text, width):
 
 
 def _info_row(c, x, y, label, value, col_width=220):
-    """
-    Dibuja una fila de información con formato etiqueta: valor.
+    """Dibuja una fila de información con formato etiqueta: valor.
 
     Renderiza la etiqueta en azul secundario y el valor en gris oscuro,
     separados por una línea divisoria suave.
 
     Args:
+    ----
         c: Objeto canvas de ReportLab sobre el que se dibuja.
         x (float): Posición horizontal de inicio en puntos.
         y (float): Posición vertical actual en puntos.
@@ -177,7 +186,9 @@ def _info_row(c, x, y, label, value, col_width=220):
             Por defecto 220.
 
     Returns:
+    -------
         float: Nueva posición vertical después de la fila (y - 20).
+
     """
     c.setFont("Helvetica-Bold", 10)
     c.setFillColor(AZUL_SECUNDARIO)
@@ -196,8 +207,7 @@ def _info_row(c, x, y, label, value, col_width=220):
 
 
 def generate_report(session_data, exercise_results, image_path=None):
-    """
-    Genera el reporte PDF completo de una sesión de ejercicio.
+    """Genera el reporte PDF completo de una sesión de ejercicio.
 
     Construye un documento PDF con encabezado institucional, información
     del paciente, resultados generales de la sesión, tabla detallada por
@@ -208,6 +218,7 @@ def generate_report(session_data, exercise_results, image_path=None):
     incluye el timestamp de generación.
 
     Args:
+    ----
         session_data (SessionData): Objeto con los datos de la sesión,
             debe implementar el método get_summary() que retorna un dict
             con las claves 'exercise_name', 'duration_seconds' y 'avg_fps'.
@@ -219,6 +230,7 @@ def generate_report(session_data, exercise_results, image_path=None):
                 - 'final_score' (float): Puntuación global de la sesión.
         image_path (str, optional): Ruta a la imagen de captura del ejercicio.
             Si es None o no existe, se omite la sección de imagen.
+
     """
     data = session_data.get_summary()
 
@@ -229,9 +241,9 @@ def generate_report(session_data, exercise_results, image_path=None):
     c = canvas.Canvas(filename, pagesize=letter)
     width, height = letter
 
-    MARGIN_LEFT  = 40
+    MARGIN_LEFT = 40
     MARGIN_RIGHT = width - 40
-    CONTENT_W    = MARGIN_RIGHT - MARGIN_LEFT
+    CONTENT_W = MARGIN_RIGHT - MARGIN_LEFT
 
     # ── ENCABEZADO ──────────────────────────────────────────────
     _draw_header(c, width, height)
@@ -246,7 +258,9 @@ def generate_report(session_data, exercise_results, image_path=None):
 
     c.setFillColor(AZUL_SECUNDARIO)
     c.setFont("Helvetica", 10)
-    c.drawString(MARGIN_LEFT, y - 16, "Análisis de movimiento asistido por visión computacional")
+    c.drawString(
+        MARGIN_LEFT, y - 16, "Análisis de movimiento asistido por visión computacional"
+    )
 
     # Línea separadora
     c.setStrokeColor(ACENTO)
@@ -258,9 +272,9 @@ def generate_report(session_data, exercise_results, image_path=None):
     # ── SECCIÓN: INFORMACIÓN DEL PACIENTE ───────────────────────
     y = _section_title(c, MARGIN_LEFT, y, "Información del Paciente", width)
 
-    y = _info_row(c, MARGIN_LEFT, y, "Nombre:",     "Adrian Felipe Vargas Rojas")
-    y = _info_row(c, MARGIN_LEFT, y, "Edad:",       "26 años")
-    y = _info_row(c, MARGIN_LEFT, y, "Sesión N°:",  "3")
+    y = _info_row(c, MARGIN_LEFT, y, "Nombre:", "Adrian Felipe Vargas Rojas")
+    y = _info_row(c, MARGIN_LEFT, y, "Edad:", "26 años")
+    y = _info_row(c, MARGIN_LEFT, y, "Sesión N°:", "3")
 
     # Padecimiento con wrapping manual
     c.setFont("Helvetica-Bold", 10)
@@ -286,10 +300,28 @@ def generate_report(session_data, exercise_results, image_path=None):
     # ── SECCIÓN: RESULTADOS DEL EJERCICIO ───────────────────────
     y = _section_title(c, MARGIN_LEFT, y, "Resultados del Ejercicio", width)
 
-    y = _info_row(c, MARGIN_LEFT, y, "Tipo de ejercicio:",     data.get("exercise_name", "Elevaciones Frontales con bastón"))
-    y = _info_row(c, MARGIN_LEFT, y, "Duración de la sesión:", f"{data.get('duration_seconds', 0)} segundos")
-    y = _info_row(c, MARGIN_LEFT, y, "FPS promedio:",          f"{data.get('avg_fps', 0)} fps")
-    y = _info_row(c, MARGIN_LEFT, y, "Repeticiones detectadas:", str(exercise_results['repetitions_detected']))
+    y = _info_row(
+        c,
+        MARGIN_LEFT,
+        y,
+        "Tipo de ejercicio:",
+        data.get("exercise_name", "Elevaciones Frontales con bastón"),
+    )
+    y = _info_row(
+        c,
+        MARGIN_LEFT,
+        y,
+        "Duración de la sesión:",
+        f"{data.get('duration_seconds', 0)} segundos",
+    )
+    y = _info_row(c, MARGIN_LEFT, y, "FPS promedio:", f"{data.get('avg_fps', 0)} fps")
+    y = _info_row(
+        c,
+        MARGIN_LEFT,
+        y,
+        "Repeticiones detectadas:",
+        str(exercise_results["repetitions_detected"]),
+    )
 
     y -= 10
 
@@ -306,9 +338,9 @@ def generate_report(session_data, exercise_results, image_path=None):
     c.rect(col1_x - 4, y - 2, CONTENT_W + 8, 18, fill=True, stroke=False)
     c.setFillColor(BLANCO)
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(col1_x + 4,  y + 3, "Repetición")
-    c.drawString(col2_x + 4,  y + 3, "Ángulo alcanzado")
-    c.drawString(col3_x + 4,  y + 3, "Puntuación")
+    c.drawString(col1_x + 4, y + 3, "Repetición")
+    c.drawString(col2_x + 4, y + 3, "Ángulo alcanzado")
+    c.drawString(col3_x + 4, y + 3, "Puntuación")
     y -= 20
 
     angles = exercise_results.get("angles", [])
@@ -348,13 +380,13 @@ def generate_report(session_data, exercise_results, image_path=None):
     y -= 10
 
     # ── PUNTUACIÓN FINAL ────────────────────────────────────────
-    score_final = exercise_results['final_score']
+    score_final = exercise_results["final_score"]
 
     c.setFillColor(AZUL_PRIMARIO)
     c.rect(MARGIN_LEFT - 8, y - 8, CONTENT_W + 16, 30, fill=True, stroke=False)
     c.setFillColor(BLANCO)
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(MARGIN_LEFT + 4, y + 6, f"Puntuación final del ejercicio:")
+    c.drawString(MARGIN_LEFT + 4, y + 6, "Puntuación final del ejercicio:")
 
     # Color dinámico del puntaje
     if score_final >= 80:
@@ -390,7 +422,14 @@ def generate_report(session_data, exercise_results, image_path=None):
         c.setFillColor(colors.HexColor("#C8D8E8"))
         c.rect(MARGIN_LEFT + 3, y - img_h - 3, img_w, img_h, fill=True, stroke=False)
 
-        c.drawImage(image_path, MARGIN_LEFT, y - img_h, width=img_w, height=img_h, preserveAspectRatio=True)
+        c.drawImage(
+            image_path,
+            MARGIN_LEFT,
+            y - img_h,
+            width=img_w,
+            height=img_h,
+            preserveAspectRatio=True,
+        )
 
         # Marco azul alrededor de la imagen
         c.setStrokeColor(AZUL_SECUNDARIO)

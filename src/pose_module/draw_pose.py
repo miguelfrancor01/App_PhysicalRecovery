@@ -1,5 +1,4 @@
-"""
-Módulo para renderizar keypoints y esqueleto humano sobre una imagen
+"""Módulo para renderizar keypoints y esqueleto humano sobre una imagen
 utilizando el formato COCO de 17 puntos.
 
 El dibujo se realiza usando OpenCV y se colorean las distintas partes
@@ -45,10 +44,10 @@ BASE_SKELETON = {
 # ---------------------------------------------------------------------
 
 COLORS = {
-    "head": (0, 255, 255),     # Amarillo
-    "arms": (255, 0, 0),       # Azul
-    "torso": (0, 165, 255),    # Naranja
-    "legs": (0, 255, 0),       # Verde
+    "head": (0, 255, 255),  # Amarillo
+    "arms": (255, 0, 0),  # Azul
+    "torso": (0, 165, 255),  # Naranja
+    "legs": (0, 255, 0),  # Verde
 }
 
 
@@ -56,9 +55,9 @@ COLORS = {
 # Identificación de grupos corporales
 # ---------------------------------------------------------------------
 
+
 def get_body_groups(num_joints):
-    """
-    Determina qué articulaciones pertenecen a cada grupo corporal.
+    """Determina qué articulaciones pertenecen a cada grupo corporal.
 
     Parameters
     ----------
@@ -70,8 +69,8 @@ def get_body_groups(num_joints):
     dict
         Diccionario con listas de índices de articulaciones
         para cada grupo corporal.
-    """
 
+    """
     groups = {
         "head": [i for i in range(0, min(5, num_joints))],
         "arms": [i for i in range(5, min(11, num_joints))],
@@ -86,9 +85,9 @@ def get_body_groups(num_joints):
 # Filtrar conexiones válidas del esqueleto
 # ---------------------------------------------------------------------
 
+
 def get_valid_connections(num_joints):
-    """
-    Filtra las conexiones del esqueleto que pueden dibujarse
+    """Filtra las conexiones del esqueleto que pueden dibujarse
     según el número de articulaciones disponibles.
 
     Parameters
@@ -100,8 +99,8 @@ def get_valid_connections(num_joints):
     -------
     dict
         Diccionario con las conexiones válidas por grupo corporal.
-    """
 
+    """
     valid = {}
 
     for group, connections in BASE_SKELETON.items():
@@ -118,9 +117,9 @@ def get_valid_connections(num_joints):
 # Renderizado de pose
 # ---------------------------------------------------------------------
 
+
 def draw_pose(image, keypoints, scores, threshold=0.3):
-    """
-    Dibuja los keypoints y el esqueleto humano sobre una imagen.
+    """Dibuja los keypoints y el esqueleto humano sobre una imagen.
 
     Parameters
     ----------
@@ -138,8 +137,8 @@ def draw_pose(image, keypoints, scores, threshold=0.3):
     -------
     numpy.ndarray
         Imagen con los keypoints y conexiones dibujadas.
-    """
 
+    """
     num_joints = len(keypoints)
 
     body_groups = get_body_groups(num_joints)
@@ -149,8 +148,7 @@ def draw_pose(image, keypoints, scores, threshold=0.3):
     # Dibujar keypoints
     # -------------------------------------------------------------
 
-    for i, (kp, score) in enumerate(zip(keypoints, scores)):
-
+    for i, (kp, score) in enumerate(zip(keypoints, scores, strict=False)):
         if score < threshold:
             continue
 
@@ -170,11 +168,9 @@ def draw_pose(image, keypoints, scores, threshold=0.3):
     # -------------------------------------------------------------
 
     for group, connections in skeleton.items():
-
         color = COLORS[group]
 
         for a, b in connections:
-
             if scores[a] < threshold or scores[b] < threshold:
                 continue
 
