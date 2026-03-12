@@ -2,7 +2,7 @@
 server:
 	.venv/Scripts/python src/grpc_server.py
 client:
-	.venv/Scripts/streamlit run app.py
+	.venv/Scripts/python -m streamlit run app.py
 clear:
 	cls
 	cls
