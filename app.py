@@ -259,11 +259,14 @@ elif st.session_state.fase == "procesando":
             "score": results["final_score"],
         }
 
-        # Generar el reporte final de la sesión con las métricas obtenidas
-        # durante la evaluación.
+        # Guardar la captura del último frame analizado en la carpeta de
+        # sesiones. La imagen se sobreescribe en cada sesión.
         duration = time.time() - start_time
-        img_temp_report = "session_capture.jpg"
 
+        session_dir = os.path.join(BASE_DIR, "reports", "sessions")
+        os.makedirs(session_dir, exist_ok=True)
+
+        img_temp_report = os.path.join(session_dir, "session_capture.jpg")
         if ultimo_frame_con_pose is not None:
             cv2.imwrite(img_temp_report, ultimo_frame_con_pose)
 
