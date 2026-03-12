@@ -427,7 +427,8 @@ Cobertura de pruebas:
 
 A continuación se presenta el diagrama UML de la arquitectura modular del sistema, mostrando la organización de los módulos, sus responsabilidades y las dependencias entre componentes. Se ilustra el flujo principal desde la interfaz Streamlit hasta el servidor gRPC, el pipeline de inferencia y la generación del reporte.
 
-> *(Insertar diagrama UML aquí)*
+<img width="1784" height="1056" alt="image" src="https://github.com/user-attachments/assets/51e3180e-382f-42f5-9dda-422010750a1f" />
+
 
 ---
 
@@ -438,3 +439,4 @@ Este proyecto es de uso educativo. No reemplaza la supervisión de un profesiona
 ## 17. Licencia
 
 Este proyecto está licenciado bajo la licencia MIT. Consulte el archivo `LICENSE` para obtener más detalles.
+
