@@ -1,3 +1,11 @@
+"""
+Módulo de generación de reportes PDF para App Physical Recovery.
+
+Construye un reporte clínico en formato PDF usando ReportLab, incluyendo
+información del paciente, resultados del ejercicio, tabla de repeticiones
+con ángulos y puntuaciones, y una captura del frame analizado.
+"""
+
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -23,8 +31,18 @@ ACENTO           = colors.HexColor("#4A90D9")   # Azul brillante para detalles
 
 
 def _draw_header(c, width, height):
-    """Dibuja el encabezado institucional en la parte superior."""
+    """
+    Dibuja el encabezado institucional en la parte superior del PDF.
 
+    Renderiza una banda azul con el título de la aplicación, el logo
+    institucional (si existe), el subtítulo del sistema, la fecha actual
+    y una nota de generación automática.
+
+    Args:
+        c: Objeto canvas de ReportLab sobre el que se dibuja.
+        width (float): Ancho de la página en puntos.
+        height (float): Alto de la página en puntos.
+    """
     # Banda azul superior
     c.setFillColor(AZUL_PRIMARIO)
     c.rect(0, height - 75, width, 75, fill=True, stroke=False)
@@ -34,7 +52,6 @@ def _draw_header(c, width, height):
     c.rect(0, height - 78, width, 3, fill=True, stroke=False)
 
     # Título
-
     title = "App Physical Recovery"
 
     c.setFillColor(BLANCO)
@@ -63,7 +80,7 @@ def _draw_header(c, width, height):
         logo_x = title_x + text_width + 12
 
         # centra el logo con el texto
-        logo_y = title_y - (logo_size / 2) 
+        logo_y = title_y - (logo_size / 2)
 
         c.drawImage(
             logo_path,
@@ -93,8 +110,18 @@ def _draw_header(c, width, height):
     c.setFillColor(colors.HexColor("#A8C8E8"))
     c.drawRightString(width - 40, height - 55, "Reporte generado automáticamente")
 
+
 def _draw_footer(c, width):
-    """Dibuja el pie de página."""
+    """
+    Dibuja el pie de página institucional en la parte inferior del PDF.
+
+    Renderiza una banda azul con el texto de uso clínico interno
+    centrado horizontalmente.
+
+    Args:
+        c: Objeto canvas de ReportLab sobre el que se dibuja.
+        width (float): Ancho de la página en puntos.
+    """
     c.setFillColor(AZUL_PRIMARIO)
     c.rect(0, 0, width, 30, fill=True, stroke=False)
     c.setFillColor(colors.HexColor("#A8C8E8"))
@@ -103,7 +130,22 @@ def _draw_footer(c, width):
 
 
 def _section_title(c, x, y, text, width):
-    """Dibuja un título de sección con banda azul."""
+    """
+    Dibuja un título de sección con banda de color azul claro y barra lateral.
+
+    Renderiza un bloque decorativo con fondo azul claro, una barra
+    izquierda en azul secundario y el texto del título en mayúsculas.
+
+    Args:
+        c: Objeto canvas de ReportLab sobre el que se dibuja.
+        x (float): Posición horizontal de inicio en puntos.
+        y (float): Posición vertical actual en puntos.
+        text (str): Texto del título de la sección.
+        width (float): Ancho de la página en puntos.
+
+    Returns:
+        float: Nueva posición vertical después del título (y - 30).
+    """
     c.setFillColor(AZUL_CLARO)
     c.rect(x - 8, y - 6, width - x - 32, 22, fill=True, stroke=False)
 
@@ -119,7 +161,24 @@ def _section_title(c, x, y, text, width):
 
 
 def _info_row(c, x, y, label, value, col_width=220):
-    """Dibuja una fila de información etiqueta: valor."""
+    """
+    Dibuja una fila de información con formato etiqueta: valor.
+
+    Renderiza la etiqueta en azul secundario y el valor en gris oscuro,
+    separados por una línea divisoria suave.
+
+    Args:
+        c: Objeto canvas de ReportLab sobre el que se dibuja.
+        x (float): Posición horizontal de inicio en puntos.
+        y (float): Posición vertical actual en puntos.
+        label (str): Texto de la etiqueta descriptiva.
+        value (str): Valor asociado a la etiqueta.
+        col_width (int, optional): Ancho de la columna de etiqueta en puntos.
+            Por defecto 220.
+
+    Returns:
+        float: Nueva posición vertical después de la fila (y - 20).
+    """
     c.setFont("Helvetica-Bold", 10)
     c.setFillColor(AZUL_SECUNDARIO)
     c.drawString(x, y, label)
@@ -137,7 +196,30 @@ def _info_row(c, x, y, label, value, col_width=220):
 
 
 def generate_report(session_data, exercise_results, image_path=None):
+    """
+    Genera el reporte PDF completo de una sesión de ejercicio.
 
+    Construye un documento PDF con encabezado institucional, información
+    del paciente, resultados generales de la sesión, tabla detallada por
+    repetición con ángulos y puntuaciones, puntuación final coloreada
+    según rendimiento, y opcionalmente una captura del frame analizado.
+
+    El archivo se guarda en la carpeta 'reports/' con un nombre que
+    incluye el timestamp de generación.
+
+    Args:
+        session_data (SessionData): Objeto con los datos de la sesión,
+            debe implementar el método get_summary() que retorna un dict
+            con las claves 'exercise_name', 'duration_seconds' y 'avg_fps'.
+        exercise_results (dict): Diccionario con los resultados del ejercicio.
+            Claves esperadas:
+                - 'repetitions_detected' (int): Número de repeticiones.
+                - 'angles' (list[float]): Ángulo máximo por repetición.
+                - 'scores' (list[float]): Puntuación por repetición (0-100).
+                - 'final_score' (float): Puntuación global de la sesión.
+        image_path (str, optional): Ruta a la imagen de captura del ejercicio.
+            Si es None o no existe, se omite la sección de imagen.
+    """
     data = session_data.get_summary()
 
     os.makedirs("reports", exist_ok=True)
