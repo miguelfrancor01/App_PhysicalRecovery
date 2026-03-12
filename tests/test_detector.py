@@ -9,12 +9,12 @@ from pose_module.detector import detect_persons
 class DummyInputs(dict):
     """
     Clase auxiliar utilizada en pruebas unitarias para simular el objeto de
-    inputs que normalmente devuelve el processor de HuggingFace.
+    entrada (`inputs`) que normalmente devuelve el processor de HuggingFace.
 
     En el pipeline real de estimación de pose, el processor genera un
     diccionario con tensores (por ejemplo, `pixel_values`) que posteriormente
-    se envían al dispositivo de cómputo mediante el método `.to(device)` de
-    PyTorch.
+    se envían al dispositivo de cómputo mediante el método `.to(device)`
+    de PyTorch.
 
     Esta clase hereda de `dict` para comportarse como el objeto real de
     inputs y define un método `.to()` que:
@@ -24,24 +24,54 @@ class DummyInputs(dict):
 
     Esto permite que las pruebas unitarias verifiquen que el pipeline envía
     correctamente los inputs al dispositivo (CPU/GPU) sin necesidad de crear
-    tensores reales ni ejecutar operaciones de PyTorch.
+    tensores reales ni ejecutar operaciones reales de PyTorch.
     """
+
     def __init__(self, *args, **kwargs):
+        """
+        Inicializa el diccionario de inputs simulado.
+
+        Args:
+            *args: Argumentos posicionales heredados de dict.
+            **kwargs: Argumentos nombrados heredados de dict.
+        """
         super().__init__(*args, **kwargs)
         self.device_received = None
 
     def to(self, device):
+        """
+        Simula el método `.to(device)` utilizado por tensores de PyTorch.
+
+        En lugar de mover tensores a un dispositivo, este método simplemente
+        registra el dispositivo recibido para que las pruebas unitarias
+        puedan verificar que el pipeline realiza correctamente la operación.
+
+        Args:
+            device (str | torch.device): Dispositivo de cómputo.
+
+        Returns:
+            DummyInputs: El mismo objeto, para imitar el comportamiento
+            encadenado de `.to()` en PyTorch.
+        """
         self.device_received = device
         return self
 
 
 def test_detect_persons_filtra_personas_y_convierte_cajas_a_xywh():
     """
-    Verifica que detect_persons:
-    1. procese la imagen correctamente,
-    2. ejecute el modelo,
-    3. filtre únicamente labels == 0 (personas),
-    4. convierta las cajas de xyxy a xywh.
+    Prueba unitaria para verificar el comportamiento principal de
+    `detect_persons`.
+
+    Esta prueba valida que la función:
+
+    1. Procese correctamente la imagen mediante el processor.
+    2. Ejecute el modelo de detección.
+    3. Filtre únicamente las detecciones con `label == 0` (personas).
+    4. Convierta correctamente las cajas delimitadoras de formato
+       `xyxy` a `xywh`.
+
+    Además, verifica que se utilicen correctamente el dispositivo de
+    cómputo y los parámetros de postprocesamiento del detector.
     """
 
     image = Image.fromarray(np.zeros((100, 200, 3), dtype=np.uint8))

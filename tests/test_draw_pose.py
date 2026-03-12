@@ -5,10 +5,16 @@ from pose_module.draw_pose import draw_pose
 
 def test_draw_pose_dibuja_keypoints_y_conexiones_respetando_threshold():
     """
-    Verifica que draw_pose:
-    1. conserve el tamaño de la imagen,
-    2. modifique la imagen al dibujar keypoints/conexiones válidas,
-    3. no dibuje un keypoint cuyo score esté por debajo del threshold.
+    Prueba unitaria para verificar el comportamiento de `draw_pose`.
+
+    Esta prueba valida que la función:
+
+    1. Conserve el tamaño original de la imagen.
+    2. Modifique la imagen al dibujar keypoints y conexiones válidas.
+    3. No dibuje keypoints cuyo `score` esté por debajo del `threshold`.
+
+    El escenario de prueba incluye varios keypoints válidos que deben
+    dibujarse y un keypoint con baja confianza que debe ser ignorado.
     """
 
     # Imagen negra base
@@ -17,14 +23,15 @@ def test_draw_pose_dibuja_keypoints_y_conexiones_respetando_threshold():
 
     # 6 keypoints:
     # - 0 a 4 pertenecen a "head"
-    # - 5 entra en "arms" y también participa en conexiones válidas de torso/brazos
+    # - 5 entra en "arms" y también participa en conexiones válidas
+    #   de torso/brazos, pero lo dejamos bajo threshold
     keypoints = np.array([
         [10, 10],   # 0
         [20, 10],   # 1
         [10, 20],   # 2
         [20, 20],   # 3
         [15, 30],   # 4
-        [60, 60],   # 5  -> este lo dejamos bajo threshold
+        [60, 60],   # 5 
     ], dtype=np.float32)
 
     scores = np.array([

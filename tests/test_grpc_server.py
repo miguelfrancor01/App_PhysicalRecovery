@@ -1,31 +1,34 @@
 import sys
 import types
+
 import numpy as np
 import pytest
 
 
 def test_stream_pose_generates_valid_response(monkeypatch):
     """
-    Verifica el funcionamiento del método `StreamPose` del servidor gRPC.
+    Prueba unitaria para validar el flujo principal de `StreamPose`.
 
-    El objetivo del test es validar el flujo principal del servidor cuando se
-    recibe un frame válido desde un cliente. Para evitar cargar los modelos
-    reales de visión por computadora (que son pesados y requieren GPU), se
-    crean módulos simulados y se registran temporalmente en `sys.modules`.
+    El objetivo de esta prueba es verificar el comportamiento del servidor
+    gRPC cuando recibe un frame válido desde un cliente.
 
-    De esta forma, cuando `grpc_server` importa dependencias como
+    Para evitar cargar modelos reales de visión por computadora, se crean
+    módulos simulados y se registran temporalmente en `sys.modules`. De esta
+    forma, cuando `grpc_server` importa dependencias como
     `pose_module.model_loader`, `pose_module.detector` o
-    `pose_module.pose_estimator`, Python utilizará estas implementaciones
-    ficticias. Esto permite probar únicamente la lógica del servidor sin
-    ejecutar inferencia real.
+    `pose_module.pose_estimator`, Python utiliza estas implementaciones
+    ficticias en lugar de las reales.
 
-    El test valida que:
+    Esto permite probar únicamente la lógica del servidor sin ejecutar
+    inferencia real ni depender de recursos pesados como GPU.
 
-    - El frame recibido es procesado correctamente.
-    - Se detecta una persona en la imagen simulada.
-    - Se estiman keypoints ficticios.
-    - Se calcula el ángulo del brazo.
-    - El servidor genera una respuesta `PoseResponse` consistente.
+    La prueba valida que:
+
+    - el frame recibido se procese correctamente,
+    - se detecte una persona en la imagen simulada,
+    - se estimen keypoints ficticios,
+    - se calcule el ángulo del brazo,
+    - el servidor genere una respuesta `PoseResponse` consistente.
     """
 
     # ------------------------------------------------------------------
@@ -65,7 +68,8 @@ def test_stream_pose_generates_valid_response(monkeypatch):
     monkeypatch.setitem(sys.modules, "pose_rating", pose_rating_mod)
 
     # ------------------------------------------------------------------
-    # Forzar reimport del servidor para que use los módulos simulados
+    # # Volver a cargar el módulo grpc_server para que utilice los módulos
+    # simulados definidos anteriormente en sys.modules.
     # ------------------------------------------------------------------
 
     sys.modules.pop("grpc_server", None)
@@ -119,7 +123,7 @@ def test_stream_pose_generates_valid_response(monkeypatch):
 
     class FakeRequest:
         """
-        Simula un mensaje PoseRequest recibido por el servidor gRPC.
+        Simula un mensaje `PoseRequest` recibido por el servidor gRPC.
         """
 
         def __init__(self):

@@ -28,7 +28,7 @@ def validar_frame(frame, frame_index=-1):
         frame_index (int, optional): Índice del frame dentro del video o stream.
 
     Returns:
-        dict: Diccionario con el resultado de la validación. Contiene:
+        dict: Diccionario con el resultado de la validación, con las claves:
             - valid (bool): Indica si el frame es válido.
             - message (str): Mensaje descriptivo del resultado.
             - frame_index (int): Índice del frame evaluado.
@@ -57,7 +57,10 @@ def validar_frame(frame, frame_index=-1):
     if len(frame.shape) != 3 or frame.shape[2] != 3:
         return {
             "valid": False,
-            "message": f"Se esperaba una imagen BGR de 3 canales, pero se recibió shape={frame.shape}.",
+            "message": (
+                "Se esperaba una imagen BGR de 3 canales, pero se recibió "
+                f"shape={frame.shape}."
+            ),
             "frame_index": frame_index,
         }
 
@@ -70,16 +73,18 @@ def validar_frame(frame, frame_index=-1):
 
 def redimensionar_frame(frame, ancho_objetivo=640):
     """
-    Redimensiona el frame manteniendo la relación de aspecto si el ancho
-    original es mayor al ancho objetivo.
+    Redimensiona el frame manteniendo la relación de aspecto.
+
+    El redimensionamiento solo se aplica si el ancho original del frame es
+    mayor que el ancho objetivo.
 
     Args:
         frame (np.ndarray): Frame en formato BGR proveniente de OpenCV.
         ancho_objetivo (int, optional): Ancho máximo permitido para el frame.
 
     Returns:
-        np.ndarray: Frame redimensionado si el ancho supera el objetivo,
-        o el frame original si no es necesario redimensionar.
+        np.ndarray: Frame redimensionado si el ancho supera el objetivo, o el
+        frame original si no es necesario redimensionar.
     """
     alto, ancho = frame.shape[:2]
 
@@ -92,7 +97,7 @@ def redimensionar_frame(frame, ancho_objetivo=640):
     frame_redimensionado = cv2.resize(
         frame,
         (ancho_objetivo, nuevo_alto),
-        interpolation=cv2.INTER_LINEAR
+        interpolation=cv2.INTER_LINEAR,
     )
 
     return frame_redimensionado
@@ -104,11 +109,13 @@ def suavizar_frame(frame, aplicar_suavizado=False, kernel=(3, 3)):
 
     Args:
         frame (np.ndarray): Frame en formato BGR.
-        aplicar_suavizado (bool, optional): Indica si se debe aplicar suavizado.
+        aplicar_suavizado (bool, optional): Indica si se debe aplicar
+            suavizado.
         kernel (tuple, optional): Tamaño del kernel para el filtro gaussiano.
 
     Returns:
-        np.ndarray: Frame suavizado si se activó la opción, o el frame original.
+        np.ndarray: Frame suavizado si se activó la opción, o el frame original
+        si no se aplicó suavizado.
     """
     if not aplicar_suavizado:
         return frame
@@ -137,7 +144,7 @@ def convertir_rgb_a_pil(frame_rgb):
         frame_rgb (np.ndarray): Frame en formato RGB.
 
     Returns:
-        PIL.Image.Image: Imagen en formato PIL.
+        PIL.Image.Image: Imagen convertida a formato PIL.
     """
     return Image.fromarray(frame_rgb)
 
@@ -152,24 +159,34 @@ def procesar_frame_para_modelo(
 ):
     """
     Ejecuta el preprocesamiento mínimo necesario para dejar un frame listo
-    para los modelos de detección y pose.
+    para los modelos de detección y estimación de pose.
+
+    El flujo incluye validación del frame, redimensionamiento opcional,
+    suavizado opcional, conversión de BGR a RGB y conversión a formato PIL.
 
     Args:
         frame (np.ndarray): Frame capturado desde OpenCV.
         frame_index (int, optional): Índice del frame dentro del flujo de video.
-        redimensionar (bool, optional): Indica si el frame debe redimensionarse.
-        ancho_objetivo (int, optional): Ancho máximo del frame en caso de redimensionar.
-        aplicar_suavizado (bool, optional): Indica si se debe aplicar suavizado gaussiano.
-        kernel_suavizado (tuple, optional): Kernel utilizado para el filtro gaussiano.
+        redimensionar (bool, optional): Indica si el frame debe
+            redimensionarse.
+        ancho_objetivo (int, optional): Ancho máximo del frame en caso de
+            redimensionar.
+        aplicar_suavizado (bool, optional): Indica si se debe aplicar
+            suavizado gaussiano.
+        kernel_suavizado (tuple, optional): Kernel utilizado para el filtro
+            gaussiano.
 
     Returns:
-        dict: Diccionario con los resultados del preprocesamiento. Contiene:
+        dict: Diccionario con los resultados del preprocesamiento, con las
+            claves:
             - valid (bool): Indica si el procesamiento fue exitoso.
             - message (str): Mensaje descriptivo del resultado.
             - frame_index (int): Índice del frame procesado.
-            - frame_procesado (np.ndarray | None): Frame final usado para inferencia.
+            - frame_procesado (np.ndarray | None): Frame final usado para
+              inferencia.
             - frame_rgb (np.ndarray | None): Frame convertido a RGB.
-            - image_pil (PIL.Image.Image | None): Imagen convertida a formato PIL.
+            - image_pil (PIL.Image.Image | None): Imagen convertida a formato
+              PIL.
     """
     validacion = validar_frame(frame, frame_index)
 
@@ -183,19 +200,20 @@ def procesar_frame_para_modelo(
             "image_pil": None,
         }
 
-    frame_procesado = frame.copy()
+    frame_procesado = frame
 
-    if redimensionar:
+    if redimensionar and frame_procesado.shape[1] > ancho_objetivo:
         frame_procesado = redimensionar_frame(
             frame_procesado,
-            ancho_objetivo=ancho_objetivo
+            ancho_objetivo=ancho_objetivo,
         )
 
-    frame_procesado = suavizar_frame(
-        frame_procesado,
-        aplicar_suavizado=aplicar_suavizado,
-        kernel=kernel_suavizado
-    )
+    if aplicar_suavizado:
+        frame_procesado = suavizar_frame(
+            frame_procesado,
+            aplicar_suavizado=True,
+            kernel=kernel_suavizado,
+        )
 
     try:
         frame_rgb = convertir_bgr_a_rgb(frame_procesado)

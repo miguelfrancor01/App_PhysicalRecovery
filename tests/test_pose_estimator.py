@@ -8,43 +8,71 @@ from pose_module.pose_estimator import estimate_pose
 
 class DummyInputs(dict):
     """
-    Clase auxiliar utilizada en pruebas unitarias para simular el objeto de
-    inputs que normalmente devuelve el processor de HuggingFace.
+    Clase auxiliar utilizada en pruebas unitarias para simular el objeto
+    de entrada (`inputs`) que normalmente devuelve el processor de
+    HuggingFace.
 
     En el pipeline real de estimación de pose, el processor genera un
-    diccionario con tensores (por ejemplo, `pixel_values`) que posteriormente
-    se envían al dispositivo de cómputo mediante el método `.to(device)` de
-    PyTorch.
+    diccionario con tensores (por ejemplo, `pixel_values`) que luego se
+    envían al dispositivo de cómputo mediante el método `.to(device)`
+    de PyTorch.
 
     Esta clase hereda de `dict` para comportarse como el objeto real de
     inputs y define un método `.to()` que:
 
-    - registra el dispositivo recibido (`device_received`)
-    - retorna el propio objeto, imitando el comportamiento de PyTorch
+    - registra el dispositivo recibido (`device_received`),
+    - retorna el propio objeto, imitando el comportamiento de PyTorch.
 
-    Esto permite que las pruebas unitarias verifiquen que el pipeline envía
-    correctamente los inputs al dispositivo (CPU/GPU) sin necesidad de crear
+    Esto permite que las pruebas unitarias verifiquen que el pipeline
+    envía correctamente los inputs al dispositivo (CPU/GPU) sin crear
     tensores reales ni ejecutar operaciones de PyTorch.
     """
+
     def __init__(self, *args, **kwargs):
+        """
+        Inicializa el diccionario de inputs simulado.
+
+        Args:
+            *args: Argumentos posicionales heredados de `dict`.
+            **kwargs: Argumentos nombrados heredados de `dict`.
+        """
         super().__init__(*args, **kwargs)
         self.device_received = None
 
     def to(self, device):
+        """
+        Simula el método `.to(device)` utilizado por tensores de PyTorch.
+
+        En lugar de mover tensores a un dispositivo real, este método
+        registra el dispositivo recibido para que las pruebas unitarias
+        puedan verificar que el pipeline realiza correctamente esta
+        operación.
+
+        Args:
+            device (str | torch.device): Dispositivo de cómputo.
+
+        Returns:
+            DummyInputs: El mismo objeto, para imitar el comportamiento
+            encadenado del método `.to()` en PyTorch.
+        """
         self.device_received = device
         return self
 
 
 def test_estimate_pose_pipeline():
     """
-    Verifica el flujo completo de estimate_pose:
+    Prueba unitaria para verificar el flujo completo de `estimate_pose`.
 
-    1. El processor recibe la imagen y cajas correctamente.
-    2. Los inputs se envían al device.
-    3. Se añade dataset_index al diccionario de inputs.
-    4. El modelo recibe los inputs correctos.
-    5. Se ejecuta el postprocesamiento.
-    6. La función retorna el primer resultado de pose_results.
+    La prueba valida que el pipeline de estimación de pose ejecute
+    correctamente las siguientes etapas:
+
+    1. El processor recibe correctamente la imagen y las cajas de persona.
+    2. Los inputs generados se envían al dispositivo de cómputo.
+    3. Se añade el campo `dataset_index` al diccionario de inputs.
+    4. El modelo recibe los inputs correctos para inferencia.
+    5. Se ejecuta el postprocesamiento de estimación de pose.
+    6. La función retorna correctamente el primer resultado de
+       `pose_results`.
     """
 
     image = Image.fromarray(np.zeros((64, 64, 3), dtype=np.uint8))
