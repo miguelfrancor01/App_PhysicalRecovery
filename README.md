@@ -427,7 +427,8 @@ Cobertura de pruebas:
 
 A continuación se presenta el diagrama UML de la arquitectura modular del sistema, mostrando la organización de los módulos, sus responsabilidades y las dependencias entre componentes. Se ilustra el flujo principal desde la interfaz Streamlit hasta el servidor gRPC, el pipeline de inferencia y la generación del reporte.
 
-<img width="1756" height="1036" alt="UML - App physical recovery" src="https://github.com/user-attachments/assets/919e8692-cae2-42a2-b499-36e2b4a8606a" />
+<img width="2188" height="1114" alt="UML - App physical recovery (1)" src="https://github.com/user-attachments/assets/fe7550fa-4fef-4442-b2fb-58421a8ed0c4" />
+
 
 
 ---
@@ -439,5 +440,6 @@ Este proyecto es de uso educativo. No reemplaza la supervisión de un profesiona
 ## 17. Licencia
 
 Este proyecto está licenciado bajo la licencia MIT. Consulte el archivo `LICENSE` para obtener más detalles.
+
 
 
