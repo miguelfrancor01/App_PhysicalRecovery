@@ -1,0 +1,32 @@
+services:
+  # Servidor de IA (gRPC)
+  grpc-server:
+    build: .
+    container_name: recovery-grpc-server
+    volumes:
+      - .:/app
+      - /app/.venv
+    ports:
+      - "50051:50051"
+    environment:
+      - CUDA_VISIBLE_DEVICES=-1
+      - UV_LINK_MODE=copy
+      - PYTHONUNBUFFERED=1
+    command: uv run python src/grpc_server.py
+
+  # Interfaz de Usuario (Streamlit)
+  frontend:
+    build: .
+    container_name: recovery-frontend
+    volumes:
+      - .:/app
+      - /app/.venv
+    ports:
+      - "8501:8501"
+    depends_on:
+      - grpc-server
+    environment:
+      - GRPC_SERVER_ADDRESS=grpc-server:50051
+      - UV_LINK_MODE=copy
+      - PYTHONUNBUFFERED=1
+    command: uv run streamlit run src/app.py --server.address=0.0.0.0

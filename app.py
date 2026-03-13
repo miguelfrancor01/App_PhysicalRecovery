@@ -175,7 +175,9 @@ elif st.session_state.fase == "procesando":
         # para cada sesión.
         reset_session()
 
-        channel = grpc.insecure_channel("localhost:50051")
+        grpc_server_addr = os.getenv("GRPC_SERVER_ADDRESS", "localhost:50051")
+
+        channel = grpc.insecure_channel(grpc_server_addr)
         stub = pose_pb2_grpc.PoseServiceStub(channel)
 
         container = av.open(video_path)
