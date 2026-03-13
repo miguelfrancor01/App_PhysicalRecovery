@@ -1,0 +1,31 @@
+# Carpetas completas
+reports
+videos
+images
+mlruns
+outputs
+.git
+.venv
+.vscode
+src/__pycache__
+__pycache__
+
+# Extensiones de archivos
+*.pdf
+*.mp4
+*.avi
+*.mov
+*.jpg
+*.png
+*.jpeg
+*.pyc
+*.pyo
+
+# Archivos específicos de gRPC (los generará el Dockerfile)
+src/pose_pb2.py
+src/pose_pb2_grpc.py
+
+# Archivos de configuración de Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
