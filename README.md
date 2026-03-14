@@ -1,10 +1,10 @@
 # App Physical Recovery: Sistema de Monitoreo de Rehabilitación de Miembro Superior con Visión por Computadora
 
 **Estudiantes:**
-- [Nombre Estudiante 1] ([Código])
-- [Nombre Estudiante 2] ([Código])
-- [Nombre Estudiante 3] ([Código])
-- [Nombre Estudiante 4] ([Código])
+- Miguel Angel Franco Restrepo (22506163)  
+- Saulo Quiñones Góngora (22506635)  
+- Adrian Felipe Vargas Rojas (22505561)
+- Juan Sebastián Peña Valderrama (22502483)  
 
 **Curso:** Desarrollo de Proyectos de IA
 **Institución:** Universidad Autónoma de Occidente
@@ -323,22 +323,100 @@ Acceda a la interfaz de MLflow desde el navegador en `http://localhost:5000`.
 
 ---
 
-## 12. Docker (propuesta)
+## 12. Docker
 
-> **Nota:** La configuración Docker está planteada como propuesta para el despliegue del sistema en un entorno reproducible y aislado. Los archivos `Dockerfile` y `docker-compose.yml` aún no hacen parte del repositorio, pero se incluyen aquí como guía para su implementación futura.
+El sistema incluye un `Dockerfile` y un `docker-compose.yml` que permiten desplegar ambos servicios (servidor gRPC e interfaz Streamlit) en contenedores aislados y reproducibles, sin necesidad de configurar el entorno local manualmente.
 
-Dado que el sistema está compuesto por dos servicios independientes (servidor gRPC e interfaz Streamlit), se propone una configuración con **Docker Compose** que levante ambos contenedores coordinadamente.
-
-### 12.1 Estructura de archivos Docker propuesta
+### 12.1 Estructura de archivos Docker
 
 ```
 App_PhysicalRecovery/
-├── Dockerfile.server       # Imagen del servidor gRPC
-├── Dockerfile.client       # Imagen de la interfaz Streamlit
-└── docker-compose.yml      # Orquestación de ambos servicios
+├── Dockerfile          # Imagen única compartida por ambos servicios
+└── docker-compose.yml  # Orquestación de grpc-server y frontend
 ```
 
-### 12.2 Construcción y ejecución
+Se utiliza una **imagen única** para los dos contenedores. El punto de entrada (`command`) definido en `docker-compose.yml` determina qué proceso levanta cada uno.
+
+### 12.2 Dockerfile
+
+La imagen se construye sobre `python:3.11-slim` e instala las dependencias del sistema necesarias para OpenCV y procesamiento de video:
+
+```dockerfile
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    build-essential \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen
+
+COPY . .
+
+# Compila el archivo .proto y mueve los stubs generados a src/
+RUN uv run python -m grpc_tools.protoc \
+    -I. \
+    --python_out=. \
+    --grpc_python_out=. \
+    pose.proto
+
+RUN mv pose_pb2.py src/ && mv pose_pb2_grpc.py src/
+
+EXPOSE 50051
+EXPOSE 8501
+```
+
+Puntos clave de la imagen:
+
+- Usa **UV** como gestor de dependencias (`uv sync --frozen`) para instalaciones rápidas y reproducibles.
+- Compila `pose.proto` automáticamente durante el build, garantizando que los stubs gRPC siempre estén sincronizados con el protocolo.
+- Expone los dos puertos del sistema: `50051` (gRPC) y `8501` (Streamlit).
+
+### 12.3 docker-compose.yml
+
+```yaml
+services:
+  grpc-server:
+    build: .
+    container_name: recovery-grpc-server
+    volumes:
+      - .:/app
+      - /app/.venv
+    ports:
+      - "50051:50051"
+    environment:
+      - CUDA_VISIBLE_DEVICES=-1
+      - UV_LINK_MODE=copy
+      - PYTHONUNBUFFERED=1
+    command: uv run python src/grpc_server.py
+
+  frontend:
+    build: .
+    container_name: recovery-frontend
+    volumes:
+      - .:/app
+      - /app/.venv
+    ports:
+      - "8501:8501"
+    depends_on:
+      - grpc-server
+    environment:
+      - GRPC_SERVER_ADDRESS=grpc-server:50051
+      - UV_LINK_MODE=copy
+      - PYTHONUNBUFFERED=1
+    command: uv run streamlit run src/app.py --server.address=0.0.0.0
+```
+
+El servicio `frontend` se conecta al servidor gRPC usando el nombre de red interno `grpc-server:50051`, definido mediante la variable de entorno `GRPC_SERVER_ADDRESS`. La directiva `depends_on` garantiza que el servidor arranque antes que la interfaz.
+
+### 12.4 Construcción y ejecución
 
 ```bash
 # Construir las imágenes
@@ -346,15 +424,21 @@ docker-compose build
 
 # Levantar ambos servicios
 docker-compose up
+
+# Levantar en segundo plano
+docker-compose up -d
+
+# Detener los contenedores
+docker-compose down
 ```
 
-La interfaz Streamlit quedará disponible en `http://localhost:8501` y el servidor gRPC escuchará en el puerto `50051`.
+Una vez levantados, la interfaz Streamlit estará disponible en `http://localhost:8501` y el servidor gRPC escuchará en el puerto `50051`.
 
-### 12.3 Consideraciones para la implementación
+### 12.5 Consideraciones
 
-- Los modelos de HuggingFace se descargan en el primer arranque del contenedor del servidor. Se recomienda montar un volumen para la caché de modelos (`~/.cache/huggingface`) y evitar descargas repetidas entre ejecuciones.
-- La carpeta `videos/` debe montarse como volumen en el contenedor del cliente para que los videos de prueba sean accesibles desde la interfaz.
-- Para entornos con GPU, es necesario usar la imagen base `pytorch/pytorch:2.10.0-cuda12.1-cudnn8-runtime` y configurar el runtime `nvidia` en Docker.
+- **CPU only:** la variable `CUDA_VISIBLE_DEVICES=-1` fuerza la inferencia en CPU. Para entornos con GPU, eliminar esta variable y agregar el runtime `nvidia` en el servicio `grpc-server`.
+- **Caché de modelos:** los modelos de HuggingFace se descargan en el primer arranque. Para evitar descargas repetidas, montar un volumen sobre `~/.cache/huggingface`.
+- **Videos de prueba:** la carpeta `videos/` queda disponible dentro del contenedor gracias al volumen `.:/app`, por lo que los archivos locales son accesibles directamente desde la interfaz.
 
 ---
 
@@ -427,19 +511,18 @@ Cobertura de pruebas:
 
 A continuación se presenta el diagrama UML de la arquitectura modular del sistema, mostrando la organización de los módulos, sus responsabilidades y las dependencias entre componentes. Se ilustra el flujo principal desde la interfaz Streamlit hasta el servidor gRPC, el pipeline de inferencia y la generación del reporte.
 
-<img width="2188" height="1114" alt="UML - App physical recovery (1)" src="https://github.com/user-attachments/assets/fe7550fa-4fef-4442-b2fb-58421a8ed0c4" />
+## 16. Tablero Kanban
 
 
+La gestión de tareas se llevó a cabo con un tablero Kanban que permitió visualizar el flujo de trabajo en columnas de backlog, en progreso y completado. El historial completo de actividades está disponible en: [Tablero Kanban](https://n9.cl/3wu03).
 
 ---
 
-## 16. Uso académico
+## 17. Uso académico
 
 Este proyecto es de uso educativo. No reemplaza la supervisión de un profesional de salud en procesos de rehabilitación física.
 
-## 17. Licencia
+## 18. Licencia
 
-Este proyecto está licenciado bajo la licencia MIT. Consulte el archivo `LICENSE` para obtener más detalles.
-
-
+Este proyecto está licenciado bajo la licencia Apache-2.0. Consulte el archivo `LICENSE` para obtener más detalles.
 
