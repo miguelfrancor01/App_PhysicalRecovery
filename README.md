@@ -182,7 +182,7 @@ El sistema utiliza dos modelos preentrenados descargados automáticamente desde 
 
 | Modelo | Identificador HuggingFace | Propósito |
 |---|---|---|
-| RT-DETR | `PekingU/rtdetr_r50vd_coco_o365` | Detección de personas |
+| RT-DETR | `PekingU/rtdetr_r18vd` | Detección de personas |
 | ViTPose-plus | `usyd-community/vitpose-plus-base` | Estimación de 17 keypoints (COCO) |
 
 ### Keypoints COCO-17 utilizados para la evaluación
