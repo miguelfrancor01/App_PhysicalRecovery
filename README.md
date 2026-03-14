@@ -7,8 +7,11 @@
 - Juan Sebastián Peña Valderrama (22502483)  
 
 **Curso:** Desarrollo de Proyectos de IA
+
 **Institución:** Universidad Autónoma de Occidente
+
 **Periodo:** 2026‑1
+
 **Repositorio:** App_PhysicalRecovery
 
 ---
@@ -510,6 +513,8 @@ Cobertura de pruebas:
 ## 15. Diagrama UML
 
 A continuación se presenta el diagrama UML de la arquitectura modular del sistema, mostrando la organización de los módulos, sus responsabilidades y las dependencias entre componentes. Se ilustra el flujo principal desde la interfaz Streamlit hasta el servidor gRPC, el pipeline de inferencia y la generación del reporte.
+
+<img width="2188" height="1114" alt="UML - App physical recovery (1)" src="https://github.com/user-attachments/assets/42c6cafb-6825-4638-b855-9d3f80949f74" />
 
 ## 16. Tablero Kanban
 
