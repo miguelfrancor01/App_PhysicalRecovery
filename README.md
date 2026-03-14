@@ -62,7 +62,6 @@ App_PhysicalRecovery/
 ├── session_capture.jpg                 # Captura de sesión de ejemplo
 │
 ├── videos/                             # Videos de prueba para el ejercicio de rehabilitación
-│   └── ejercicio1.mp4                  # (carpeta no incluida en el repositorio por su tamaño)
 │
 ├── src/
 │   ├── __init__.py
