@@ -11,3 +11,6 @@ serverMl:
 	uv run mlflow server --port 5000
 experiments:
 	python src/mlflow_experiments.py
+
+test:
+	uv run pytest
