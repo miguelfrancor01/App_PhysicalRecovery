@@ -1,4 +1,4 @@
-"""Interfaz gráfica de la aplicación App Physical Recovery.
+"""Interfaz gráfica de la aplicación App Physical Recovery. (Prueba)
 
 Este módulo implementa la interfaz de usuario con Streamlit y actúa como
 cliente del servidor gRPC encargado de la inferencia de visión por
