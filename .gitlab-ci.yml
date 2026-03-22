@@ -32,8 +32,8 @@ run_test:
 
 build_image:
   stage: build
-  #tags:
-   # - local  # <--- Crucial para usar tu disco duro
+  tags:
+    - local  # <--- Crucial para usar tu disco duro
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_HOST: tcp://docker:2376
