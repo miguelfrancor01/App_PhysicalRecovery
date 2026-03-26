@@ -5,47 +5,43 @@ stages:
 
 variables:
   IMAGE_NAME: "seba39399/app_physicalrecovery"
-  IMAGE_TAG: "grupo2-1.0" 
+  IMAGE_TAG: "grupo2-1.0"
 
 run_test:
   stage: test
   timeout: 90m
   tags:
     - uao-local
-  # tags:
-  #  - local  
   image: python:3.11-slim
   before_script:
     # 1. Instalación de dependencias de sistema (OpenGL, Video, gRPC)
     - apt-get update && apt-get install -y --no-install-recommends curl libgl1 libglib2.0-0 ffmpeg make
-    
+
     # 2. Instalación de uv
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="/root/.local/bin:$PATH"
-    
-    # 3. Instalación de librerías (Ahora sin miedo al espacio en disco)
+
+    # 3. Instalación de librerías
     - uv sync --frozen
-    
+
     # 4. Generación de archivos gRPC para el servidor de pose
     - uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. pose.proto
     - mv pose_pb2.py src/ && mv pose_pb2_grpc.py src/
   script:
     # 5. Ejecución de los tests
-    - uv run pytest 
+    - uv run pytest
 
 build_image:
   stage: build
   tags:
     - uao-local
-
-  #tags:
-  #  - local  # <--- Crucial para usar tu disco duro
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_CERTDIR: ""
     DOCKER_HOST: tcp://docker:2376
   image: docker:29.3.0-cli
   services:
-    - docker:29.3.0-dind
+    - name: docker:29.3.0-dind
+      alias: docker
   before_script:
     - echo "$REGISTRY_PASS" | docker login -u "$REGISTRY_USER" --password-stdin
   script:
