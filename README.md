@@ -1,4 +1,3 @@
-Prueba --- ¿?
 # App Physical Recovery: Sistema de Monitoreo de Rehabilitación de Miembro Superior con Visión por Computadora
 
 **Estudiantes:**

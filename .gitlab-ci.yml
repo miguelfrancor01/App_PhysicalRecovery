@@ -1,4 +1,4 @@
-# .gitlab-ci.yml - Versión para Runner Local (UAO)
+# .gitlab-ci.yml - Versión para Runner Local
 stages:
   - test
   - build
@@ -9,8 +9,9 @@ variables:
 
 run_test:
   stage: test
+  timeout: 90m
   tags:
-    - local
+    - uao-local
   image: python:3.11-slim
   before_script:
     # 1. Instalación de dependencias de sistema (OpenGL, Video, gRPC)
@@ -20,7 +21,7 @@ run_test:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="/root/.local/bin:$PATH"
 
-    # 3. Instalación de librerías (Ahora sin miedo al espacio en disco)
+    # 3. Instalación de librerías
     - uv sync --frozen
 
     # 4. Generación de archivos gRPC para el servidor de pose
@@ -33,13 +34,14 @@ run_test:
 build_image:
   stage: build
   tags:
-    - local  # <--- Crucial para usar tu disco duro
+    - uao-local
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_CERTDIR: ""
     DOCKER_HOST: tcp://docker:2376
   image: docker:29.3.0-cli
   services:
-    - docker:29.3.0-dind
+    - name: docker:29.3.0-dind
+      alias: docker
   before_script:
     - echo "$REGISTRY_PASS" | docker login -u "$REGISTRY_USER" --password-stdin
   script:
