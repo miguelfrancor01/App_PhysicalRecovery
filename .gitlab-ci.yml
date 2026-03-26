@@ -11,9 +11,7 @@ run_test:
   stage: test
   timeout: 90m
   tags:
-    - miguel-local
-    - saulo-local
-    - adrian-local
+    - uao-local
   # tags:
   #  - local  
   image: python:3.11-slim
@@ -38,9 +36,7 @@ run_test:
 build_image:
   stage: build
   tags:
-    - miguel-local
-    - saulo-local
-    - adrian-local
+    - uao-local
 
   #tags:
   #  - local  # <--- Crucial para usar tu disco duro
