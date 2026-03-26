@@ -9,7 +9,7 @@ variables:
 
 run_test:
   stage: test
-  timeout: 90 minutes
+  timeout: 90m
   # tags:
   #  - local  
   image: python:3.11-slim
