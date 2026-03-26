@@ -1,4 +1,4 @@
-# .gitlab-ci.yml - Versión para Runner Local
+# .gitlab-ci.yml - Versión para Runner Local (UAO)
 stages:
   - test
   - build
@@ -35,13 +35,13 @@ build_image:
   stage: build
   tags:
     - uao-local
-  variables:
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_HOST: tcp://docker:2375 #3se cambia de puerto con TLS (2376) a puerto sin TLS (2375)
   image: docker:29.3.0-cli
   services:
     - name: docker:29.3.0-dind
       alias: docker
+  variables:
+    DOCKER_HOST: "unix:///runner/services/docker/docker.sock"
+    DOCKER_TLS_CERTDIR: ""
   before_script:
     - echo "$REGISTRY_PASS" | docker login -u "$REGISTRY_USER" --password-stdin
   script:
