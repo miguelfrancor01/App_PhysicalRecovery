@@ -4,29 +4,39 @@ stages:
   - build
 
 variables:
+  UV_VERSION: "0.10.9"
+  PYTHON_VERSION: "3.12"
+  BASE_LAYER: "trixie-slim"
+
   IMAGE_NAME: "adrianfvr999/app_physicalrecovery_gitlab"
   IMAGE_TAG: "grupo2-1.0"
+  #N  cache en UV en lugar de todo el ambiente virtual
+  UV_CACHE_DIR: ".uv-cache"
+  #N Los builds sean muy rápidos
+  DOCKER_BUILDKIT: 1
 
 run_test:
   stage: test
   timeout: 2h
   tags:
     - uao-local
-  image: python:3.11-slim
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-$BASE_LAYER #E python:3.11-slim
   before_script:
     # 1. Instalación de dependencias de sistema (OpenGL, Video, gRPC)
     - apt-get update && apt-get install -y --no-install-recommends curl libgl1 libglib2.0-0 ffmpeg make
     # 2. Instalación de uv
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="/root/.local/bin:$PATH"
-    # 3. Instalación de librerías
+    # 3. Explicitly set UV cache dir after UV is installed
+    - export UV_CACHE_DIR=".uv-cache"
+    # 4. Instalación de librerías
     - uv sync --frozen
-    # 4. Generación de archivos gRPC para el servidor de pose
+    # 5. Generación de archivos gRPC para el servidor de pose
     - uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. pose.proto
     - mv pose_pb2.py src/ && mv pose_pb2_grpc.py src/
   script:
     # 5. Ejecución de los tests
-    - uv run pytest
+    - make test #E uv run pytest
 
   cache:
     key:
@@ -55,5 +65,15 @@ build_image:
   before_script:
     - echo "$REGISTRY_PASS" | docker login -u "$REGISTRY_USER" --password-stdin
   script:
-    - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+    # Haciendo este build estamos usando la ultima imagen, como cache en linea.
+    - docker pull $IMAGE_NAME:latest || true
+    - >
+      docker build
+      --cache-from $IMAGE_NAME:latest
+      --build-arg BUILDKIT_INLINE_CACHE=1
+      -t $IMAGE_NAME:$IMAGE_TAG
+      -t $IMAGE_NAME:latest
+      .
+    # Hacemos push hacia dockerhub
     - docker push $IMAGE_NAME:$IMAGE_TAG
+    - docker push $IMAGE_NAME:latest
