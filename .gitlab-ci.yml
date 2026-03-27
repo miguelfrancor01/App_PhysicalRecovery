@@ -9,21 +9,18 @@ variables:
 
 run_test:
   stage: test
-  timeout: 90m
+  timeout: 2h
   tags:
     - uao-local
   image: python:3.11-slim
   before_script:
     # 1. Instalación de dependencias de sistema (OpenGL, Video, gRPC)
     - apt-get update && apt-get install -y --no-install-recommends curl libgl1 libglib2.0-0 ffmpeg make
-
     # 2. Instalación de uv
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="/root/.local/bin:$PATH"
-
     # 3. Instalación de librerías
     - uv sync --frozen
-
     # 4. Generación de archivos gRPC para el servidor de pose
     - uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. pose.proto
     - mv pose_pb2.py src/ && mv pose_pb2_grpc.py src/
@@ -33,6 +30,7 @@ run_test:
 
 build_image:
   stage: build
+  timeout: 2h
   tags:
     - uao-local
   image: docker:29.3.0-cli
