@@ -1,4 +1,4 @@
-# App Physical Recovery: Sistema de Monitoreo de Rehabilitación de Miembro Superior con Visión por Computadoraa
+# App Physical Recovery: Sistema de Monitoreo de Rehabilitación de Miembro Superior con Visión por Computadora
 
 **Estudiantes:**
 - Miguel Angel Franco Restrepo (22506163)
