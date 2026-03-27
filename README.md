@@ -1,10 +1,10 @@
-# App Physical Recovery: Sistema de Monitoreo de Rehabilitación de Miembro Superior con Visión por Computadora
+# App Physical Recovery: Sistema de Monitoreo de Rehabilitación de Miembro Superior con Visión por Computadoraa
 
 **Estudiantes:**
-- Miguel Angel Franco Restrepo (22506163)  
-- Saulo Quiñones Góngora (22506635)  
+- Miguel Angel Franco Restrepo (22506163)
+- Saulo Quiñones Góngora (22506635)
 - Adrian Felipe Vargas Rojas (22505561)
-- Juan Sebastián Peña Valderrama (22502483)  
+- Juan Sebastián Peña Valderrama (22502483)
 
 **Curso:** Desarrollo de Proyectos de IA
 
@@ -529,4 +529,3 @@ Este proyecto es de uso educativo. No reemplaza la supervisión de un profesiona
 ## 18. Licencia
 
 Este proyecto está licenciado bajo la licencia Apache-2.0. Consulte el archivo `LICENSE` para obtener más detalles.
-
