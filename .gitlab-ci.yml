@@ -11,7 +11,7 @@ run_test:
   stage: test
   timeout: 2h
   tags:
-    - uao-local
+    - sebastian-local #uao-local
   image: python:3.11-slim
   before_script:
     # 1. Instalación de dependencias de sistema (OpenGL, Video, gRPC)
@@ -32,7 +32,7 @@ build_image:
   stage: build
   timeout: 2h
   tags:
-    - uao-local
+    - sebastian-local # uao-local
   image: docker:29.3.0-cli
   services:
     - name: docker:29.3.0-dind
