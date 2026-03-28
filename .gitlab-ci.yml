@@ -94,13 +94,13 @@ deploy:
   - >
     ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY root@64.23.160.162 "
     echo \"$REGISTRY_PASS\" | docker login -u \"$REGISTRY_USER\" --password-stdin &&
-    docker pull $IMAGE_NAME:$IMAGE_TAG &&
+    docker pull $IMAGE_NAME:latest &&
     docker rm -f $DOCKER_CONTAINER || true &&
     docker run -d --name $DOCKER_CONTAINER \
       -p 80:8501 \
       -e GRPC_SERVER_ADDRESS='127.0.0.1:50051' \
       --restart always \
-      $IMAGE_NAME:$IMAGE_TAG \
+      $IMAGE_NAME:latest \
       /bin/sh -c '.venv/bin/python src/grpc_server.py & .venv/bin/streamlit run app.py --server.port=8501 --server.address=0.0.0.0'"
   only:
    - main
