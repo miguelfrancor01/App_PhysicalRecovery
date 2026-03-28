@@ -83,7 +83,7 @@ if "pdf_path" not in st.session_state:
 if "exercise_results" not in st.session_state:
     st.session_state.exercise_results = None
 
-st.title("App Physical Recovery  UAO-DEVelopers")
+st.title("App Physical Recovery  cki6/5cCGk-]M&+y0BJhtu[81$69b1")
 st.markdown("### Sistema de análisis de pose ViTPose con gRPC")
 
 # ---------------------------------------------------------------------
