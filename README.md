@@ -555,7 +555,6 @@ shutdown_timeout = 0
     shm_size = 0
     network_mtu = 0
 ```
- 
 Decisiones de configuración relevantes:
  
 - **`executor = "docker"`**: cada job corre en un contenedor aislado, lo que garantiza reproducibilidad entre ejecuciones.
@@ -566,13 +565,13 @@ Decisiones de configuración relevantes:
  
 ### 15.3 Estructura del pipeline (`.gitlab-ci.yml`)
  
-El pipeline tiene dos stages que se ejecutan secuencialmente en la rama `main`:
+El pipeline tiene tres stages que se ejecutan secuencialmente al hacer push a la rama `main`:
  
 ```
-test  →  build
+test  →  build  →  deploy
 ```
  
-Ambos stages corren en el runner local identificado con el tag `uao-local`.
+Los tres stages corren en el runner local identificado con el tag `uao-local`.
  
 #### Variables globales
  
@@ -668,16 +667,19 @@ Puntos clave:
  
 ### 15.4 Variables CI/CD requeridas en GitLab
  
-Para la configuración de las variables CI/CD se usó el flujo de **Settings → CI/CD → Variables** dentro del entorno de Gitlab:
+El flujo de trabajo realizado para configurar las variables CI/CD consistió en ubicar las opciones de **Settings → CI/CD → Variables** dentro del entorno de Gitlab:
  
 | Variable | Descripción | Masked |
 |---|---|---|
 | `REGISTRY_USER` | Usuario de Docker Hub | No |
 | `REGISTRY_PASS` | Token de acceso de Docker Hub (no la contraseña) | Sí |
+| `SSH_PRIVATE_KEY` | Clave privada SSH para conectarse al Droplet | Sí |
+ 
+> La variable `SSH_PRIVATE_KEY` debe ser de tipo File en GitLab CI/CD para que el runner la escriba como archivo en disco. El job de deploy la referencia con `$SSH_PRIVATE_KEY` como ruta al archivo temporal.
  
 ### 15.5 Despliegue en DigitalOcean (Droplet)
  
-La imagen publicada en Docker Hub se despliega en un Droplet de DigitalOcean con Ubuntu y Docker instalado. El despliegue se realiza manualmente o puede automatizarse como un stage adicional del pipeline.
+El despliegue es automático: el stage `deploy` del pipeline se conecta por SSH al Droplet y ejecuta los comandos directamente, sin intervención manual. Se dispara al completarse el stage `build` en la rama `main`.
  
 #### Especificaciones del Droplet
  
@@ -690,66 +692,53 @@ La imagen publicada en Docker Hub se despliega en un Droplet de DigitalOcean con
 | Región | SFO3 (San Francisco) |
 | IP pública | `64.23.160.162` |
  
-#### Requisitos previos
+#### Requisitos previos en el Droplet
  
 - Docker instalado (`sudo apt install docker.io`)
-- Puertos abiertos en el firewall del Droplet: `8501` (Streamlit) y `50051` (gRPC)
+- Clave pública SSH correspondiente a `$SSH_PRIVATE_KEY` agregada en `~/.ssh/authorized_keys` del usuario `root`
+- Puertos abiertos en el firewall: `80` (Streamlit expuesto en el host) y `50051` (gRPC, interno)
  
-#### Despliegue manual desde el Droplet
+#### Stage `deploy` — `deploy`
  
-```bash
-# Autenticarse en Docker Hub
-echo "$REGISTRY_PASS" | docker login -u "$REGISTRY_USER" --password-stdin
- 
-# Detener y eliminar contenedores anteriores (si existen)
-docker stop recovery-grpc-server recovery-frontend 2>/dev/null || true
-docker rm   recovery-grpc-server recovery-frontend 2>/dev/null || true
- 
-# Descargar la imagen publicada por el pipeline
-docker pull adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0
- 
-# Levantar el servidor gRPC
-docker run -d \
-  --name recovery-grpc-server \
-  --restart unless-stopped \
-  -p 50051:50051 \
-  -e PYTHONUNBUFFERED=1 \
-  adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0 \
-  .venv/bin/python src/grpc_server.py
- 
-# Esperar a que el servidor esté listo
-sleep 5
- 
-# Levantar la interfaz Streamlit
-docker run -d \
-  --name recovery-frontend \
-  --restart unless-stopped \
-  -p 8501:8501 \
-  -e GRPC_SERVER_ADDRESS=recovery-grpc-server:50051 \
-  -e PYTHONUNBUFFERED=1 \
-  --link recovery-grpc-server \
-  adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0 \
-  .venv/bin/streamlit run app.py \
-    --server.port=8501 \
-    --server.address=0.0.0.0 \
-    --server.headless=true
+```yaml
+deploy:
+  stage: deploy
+  timeout: 2h
+  tags:
+    - uao-local
+  image: alpine:latest
+  variables:
+    DOCKER_CONTAINER: "app_physicalrecovery_gitlab"
+  before_script:
+    - apk add --no-cache openssh-client
+    - chmod 400 $SSH_PRIVATE_KEY
+  script:
+    - >
+      ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY root@64.23.160.162 "
+      echo \"$REGISTRY_PASS\" | docker login -u \"$REGISTRY_USER\" --password-stdin &&
+      docker pull $IMAGE_NAME:latest &&
+      docker rm -f $DOCKER_CONTAINER || true &&
+      docker run -d --name $DOCKER_CONTAINER \
+        -p 80:8501 \
+        -e GRPC_SERVER_ADDRESS='127.0.0.1:50051' \
+        --restart always \
+        $IMAGE_NAME:latest \
+        /bin/sh -c '.venv/bin/python src/grpc_server.py & .venv/bin/streamlit run app.py --server.port=8501 --server.address=0.0.0.0'"
+  only:
+    - main
 ```
  
-Una vez levantados, la aplicación estará disponible en `http://64.23.160.162:8501`.
+Puntos clave:
  
-#### Verificación del despliegue
+- Usa `alpine:latest` como imagen base e instala solo `openssh-client`, manteniendo el job liviano.
+- **`chmod 400 $SSH_PRIVATE_KEY`**: ajusta los permisos del archivo de clave privada que GitLab escribe en disco; SSH rechaza claves con permisos demasiado abiertos.
+- **`-o StrictHostKeyChecking=no`**: evita que SSH bloquee la conexión por no reconocer el host en el primer intento.
+- El servidor gRPC y el frontend Streamlit corren en el mismo contenedor usando un proceso compuesto (`&`), con `GRPC_SERVER_ADDRESS=127.0.0.1:50051` para comunicación interna.
+- El puerto `80` del host se mapea al `8501` del contenedor, haciendo la app accesible en `http://64.23.160.162` sin especificar puerto.
+- `--restart always` garantiza que el contenedor se reinicie automáticamente si el Droplet se reinicia.
+- El job solo se ejecuta en la rama `main` (`only: - main`).
  
-```bash
-# Ver estado de los contenedores
-docker ps --filter "name=recovery" \
-  --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
- 
-# Ver logs del servidor gRPC
-docker logs recovery-grpc-server --tail 30
- 
-# Ver logs del frontend
-docker logs recovery-frontend --tail 30
-```
+Una vez completado el pipeline, la aplicación queda disponible en `http://64.23.160.162`.
  
 ### 15.6 Flujo completo del pipeline
  
@@ -769,12 +758,16 @@ git push origin main
   │  (stage:    │  docker push → grupo2-1.0 + latest
   │   build)    │
   └──────┬──────┘
+         │ si pasa
+         ▼
+  ┌─────────────┐
+  │   deploy    │  SSH → root@64.23.160.162
+  │  (stage:    │  docker pull + docker run en el Droplet
+  │   deploy)   │
+  └──────┬──────┘
          │
          ▼
-  Docker Hub: adrianfvr999/app_physicalrecovery_gitlab
-         │
-         ▼ (despliegue manual)
-  DigitalOcean Droplet → docker run → app en :8501
+  DigitalOcean Droplet: app disponible en http://64.23.160.162
 ```
 ---
 
