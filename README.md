@@ -1,4 +1,4 @@
-# App Physical Recovery: Sistema de Monitoreo de Rehabilitación de Miembro Superior con Visión por Computadoraa
+# App Physical Recovery: Sistema de Monitoreo de Rehabilitación de Miembro Superior con Visión por Computadora
 
 **Estudiantes:**
 - Miguel Angel Franco Restrepo (22506163)
@@ -511,11 +511,11 @@ Cobertura de pruebas:
 
 ## 15. CI/CD con GitLab
  
-El proyecto implementa un pipeline completo de integración y despliegue continuo usando **GitLab CI/CD**, con un runner local configurado para superar las limitaciones de tamaño de imagen de los runners compartidos de GitLab.
+El proyecto implementa un pipeline completo de integración y despliegue continuo usando GitLab CI/CD, con un runner local configurado para superar las limitaciones de tamaño de imagen de los runners compartidos de GitLab.
  
 ### 15.1 Motivación del runner local
  
-La imagen Docker del proyecto pesa aproximadamente **10 GB** debido a las dependencias de Deep Learning (PyTorch, Transformers, OpenCV). Los runners compartidos de GitLab tienen límites de almacenamiento y tiempo que hacen inviable el build en esa infraestructura. La solución adoptada fue registrar un **GitLab Runner propio** en una máquina local con Docker instalado, ejecutado como executor de tipo `docker`.
+La imagen Docker del proyecto pesa aproximadamente 10 GB debido a las dependencias de Deep Learning (PyTorch, Transformers, OpenCV). Los runners compartidos de GitLab tienen límites de almacenamiento y tiempo que hacen inviable el build en esa infraestructura. La solución adoptada fue registrar un GitLab Runner propio en una máquina local con Docker instalado, ejecutado como executor de tipo `docker`.
  
 ### 15.2 Configuración del runner (`config.toml`)
  
@@ -677,11 +677,9 @@ Configurar en **Settings → CI/CD → Variables** del repositorio:
 | `REGISTRY_USER` | Usuario de Docker Hub | No |
 | `REGISTRY_PASS` | Token de acceso de Docker Hub (no la contraseña) | Sí |
  
-> Usar un **Access Token** de Docker Hub (Account Settings → Security → New Access Token) en lugar de la contraseña directa es una buena práctica: permite revocar el acceso sin cambiar la contraseña de la cuenta.
- 
 ### 15.5 Despliegue en DigitalOcean (Droplet)
  
-La imagen publicada en Docker Hub se despliega en un **Droplet de DigitalOcean** con Ubuntu y Docker instalado. El despliegue se realiza manualmente o puede automatizarse como un stage adicional del pipeline.
+La imagen publicada en Docker Hub se despliega en un Droplet de DigitalOcean con Ubuntu y Docker instalado. El despliegue se realiza manualmente o puede automatizarse como un stage adicional del pipeline.
  
 #### Especificaciones del Droplet
  
@@ -780,7 +778,6 @@ git push origin main
          ▼ (despliegue manual)
   DigitalOcean Droplet → docker run → app en :8501
 ```
-
 ---
 
 ## 16. Diagrama UML
@@ -790,7 +787,6 @@ A continuación se presenta el diagrama UML de la arquitectura modular del siste
 <img width="2188" height="1114" alt="UML - App physical recovery (1)" src="https://github.com/user-attachments/assets/42c6cafb-6825-4638-b855-9d3f80949f74" />
 
 ## 17. Tablero Kanban
-
 
 La gestión de tareas se llevó a cabo con un tablero Kanban que permitió visualizar el flujo de trabajo en columnas de backlog, en progreso y completado. El historial completo de actividades está disponible en: [Tablero Kanban](https://n9.cl/3wu03).
 
