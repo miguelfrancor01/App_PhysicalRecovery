@@ -1,4 +1,4 @@
-# .gitlab-ci.yml - Versión para Runner Local u (UAO)
+# .gitlab-ci.yml - Versión para Runner Local UAO (UAO)
 stages:
   - test
   - build
