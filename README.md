@@ -668,7 +668,7 @@ Puntos clave:
  
 ### 15.4 Variables CI/CD requeridas en GitLab
  
-Configurar en **Settings → CI/CD → Variables** del repositorio:
+Para la configuración de las variables CI/CD se usó el flujo de **Settings → CI/CD → Variables** dentro del entorno de Gitlab:
  
 | Variable | Descripción | Masked |
 |---|---|---|
