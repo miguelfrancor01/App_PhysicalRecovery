@@ -1,38 +1,21 @@
 services:
   grpc-server:
-    build: .
-    image: app_physicalrecovery:latest
+    image: adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0
     container_name: recovery-grpc-server
-    volumes:
-      - .:/app
-      - /app/.venv
     ports:
       - "50051:50051"
     environment:
-      - CUDA_VISIBLE_DEVICES=0
-      - UV_LINK_MODE=copy
       - PYTHONUNBUFFERED=1
     command: uv run python src/grpc_server.py
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
   frontend:
-    image: app_physicalrecovery:latest
+    image: adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0
     container_name: recovery-frontend
-    volumes:
-      - .:/app
-      - /app/.venv
     ports:
       - "8501:8501"
     depends_on:
       - grpc-server
     environment:
       - GRPC_SERVER_ADDRESS=grpc-server:50051
-      - UV_LINK_MODE=copy
       - PYTHONUNBUFFERED=1
     command: uv run streamlit run app.py --server.address=0.0.0.0
