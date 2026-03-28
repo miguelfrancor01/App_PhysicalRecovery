@@ -509,23 +509,291 @@ Cobertura de pruebas:
 
 ---
 
-## 15. Diagrama UML
+## 15. CI/CD con GitLab
+ 
+El proyecto implementa un pipeline completo de integración y despliegue continuo usando GitLab CI/CD, con un runner local configurado para superar las limitaciones de tamaño de imagen de los runners compartidos de GitLab.
+ 
+### 15.1 Motivación del runner local
+ 
+La imagen Docker del proyecto pesa aproximadamente 10 GB debido a las dependencias de Deep Learning (PyTorch, Transformers, OpenCV). Los runners compartidos de GitLab tienen límites de almacenamiento y tiempo que hacen inviable el build en esa infraestructura. La solución adoptada fue registrar un GitLab Runner propio en una máquina local con Docker instalado, ejecutado como executor de tipo `docker`.
+ 
+### 15.2 Configuración del runner (`config.toml`)
+ 
+El runner se configura en el archivo `config.toml` de GitLab Runner. La configuración relevante del proyecto es la siguiente:
+ 
+```toml
+concurrent = 3
+check_interval = 0
+connection_max_age = "15m0s"
+shutdown_timeout = 0
+ 
+[session_server]
+  session_timeout = 1800
+ 
+[[runners]]
+  name = "local-runner"
+  url = "https://gitlab.com"
+  id = <runner-id>
+  token = <runner-token>
+  token_obtained_at = <fecha>
+  token_expires_at = 0001-01-01T00:00:00Z
+  executor = "docker"
+  [runners.cache]
+    MaxUploadedArchiveSize = 0
+    [runners.cache.s3]
+    [runners.cache.gcs]
+    [runners.cache.azure]
+  [runners.docker]
+    tls_verify = false
+    image = "python:3.11-slim"
+    privileged = true
+    disable_entrypoint_overwrite = false
+    oom_kill_disable = false
+    disable_cache = false
+    volumes = ["/runner/services/docker", "/cache"]
+    volume_keep = false
+    shm_size = 0
+    network_mtu = 0
+```
+ 
+Decisiones de configuración relevantes:
+ 
+- **`executor = "docker"`**: cada job corre en un contenedor aislado, lo que garantiza reproducibilidad entre ejecuciones.
+- **`privileged = true`**: necesario para que el stage de build pueda ejecutar Docker dentro de Docker (DinD).
+- **`volumes = ["/runner/services/docker", "/cache"]`**: el socket de Docker y el directorio de caché se montan desde el host, permitiendo que el stage `build_image` se comunique con el daemon de Docker del host mediante `unix:///runner/services/docker/docker.sock`.
+- **`concurrent = 3`**: permite hasta 3 jobs en paralelo en el mismo runner.
+- **`image = "python:3.11-slim"`**: imagen base por defecto para jobs que no especifiquen su propia imagen.
+ 
+### 15.3 Estructura del pipeline (`.gitlab-ci.yml`)
+ 
+El pipeline tiene dos stages que se ejecutan secuencialmente en la rama `main`:
+ 
+```
+test  →  build
+```
+ 
+Ambos stages corren en el runner local identificado con el tag `uao-local`.
+ 
+#### Variables globales
+ 
+```yaml
+variables:
+  UV_VERSION: "0.10.9"
+  PYTHON_VERSION: "3.12"
+  BASE_LAYER: "trixie-slim"
+  IMAGE_NAME: "adrianfvr999/app_physicalrecovery_gitlab"
+  IMAGE_TAG: "grupo2-1.0"
+  UV_CACHE_DIR: ".uv-cache"
+  DOCKER_BUILDKIT: 1
+```
+ 
+- `IMAGE_NAME` e `IMAGE_TAG` identifican la imagen publicada en Docker Hub.
+- `UV_CACHE_DIR` redirige el caché de UV a una ruta que GitLab puede persistir entre ejecuciones.
+- `DOCKER_BUILDKIT: 1` activa BuildKit para builds más rápidos con soporte de caché por capas.
+ 
+#### Stage `test` — `run_test`
+ 
+```yaml
+run_test:
+  stage: test
+  timeout: 2h
+  tags:
+    - uao-local
+  image: ghcr.io/astral-sh/uv:0.10.9-python3.12-trixie-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends
+        curl libgl1 libglib2.0-0 ffmpeg make
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - export PATH="/root/.local/bin:$PATH"
+    - export UV_CACHE_DIR=".uv-cache"
+    - uv sync --frozen
+    - uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. pose.proto
+    - mv pose_pb2.py src/ && mv pose_pb2_grpc.py src/
+  script:
+    - make test
+  cache:
+    key:
+      files:
+        - pyproject.toml
+        - uv.lock
+    paths:
+      - .uv-cache/
+```
+ 
+Puntos clave:
+ 
+- Usa la imagen oficial de UV con Python embebido (`ghcr.io/astral-sh/uv`), evitando instalar Python por separado.
+- Instala las dependencias de sistema mínimas necesarias para OpenCV (`libgl1`, `libglib2.0-0`) y procesamiento de video (`ffmpeg`).
+- **Caché inteligente:** en lugar de cachear el directorio `.venv` completo (~30 000 archivos), se cachea únicamente `.uv-cache/`. Esto reduce drásticamente el tiempo de subida y descarga del caché en GitLab.
+- La clave de caché está vinculada a `pyproject.toml` y `uv.lock`: el caché se invalida automáticamente cuando cambian las dependencias.
+- Genera los stubs gRPC (`pose_pb2.py`, `pose_pb2_grpc.py`) dentro del job antes de correr los tests, ya que estos archivos están excluidos del repositorio (son generados).
+ 
+#### Stage `build` — `build_image`
+ 
+```yaml
+build_image:
+  stage: build
+  timeout: 2h
+  tags:
+    - uao-local
+  image: docker:29.3.0-cli
+  services:
+    - name: docker:29.3.0-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: "unix:///runner/services/docker/docker.sock"
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - echo "$REGISTRY_PASS" | docker login -u "$REGISTRY_USER" --password-stdin
+  script:
+    - docker pull $IMAGE_NAME:latest || true
+    - >
+      docker build
+      --cache-from $IMAGE_NAME:latest
+      --build-arg BUILDKIT_INLINE_CACHE=1
+      -t $IMAGE_NAME:$IMAGE_TAG
+      -t $IMAGE_NAME:latest
+      .
+    - docker push $IMAGE_NAME:$IMAGE_TAG
+    - docker push $IMAGE_NAME:latest
+```
+ 
+Puntos clave:
+ 
+- Usa `docker:29.3.0-cli` + `docker:29.3.0-dind` como servicio para tener Docker disponible dentro del job.
+- **`DOCKER_HOST: "unix:///runner/services/docker/docker.sock"`**: conecta al daemon de Docker del host a través del socket montado en el volumen del runner, en lugar de usar TLS. Esto requiere que el volumen `/runner/services/docker` esté declarado en `config.toml`.
+- **Caché en línea (`--cache-from`):** antes de cada build se descarga la imagen `latest` de Docker Hub y se usa como caché de capas. El flag `--build-arg BUILDKIT_INLINE_CACHE=1` incrusta los metadatos de caché dentro de la imagen publicada para que el próximo build pueda aprovecharlos.
+- La imagen se publica con dos tags: el tag fijo `grupo2-1.0` y `latest`, lo que permite referenciar la versión estable desde `docker-compose.yml`.
+- Las credenciales de Docker Hub (`$REGISTRY_USER`, `$REGISTRY_PASS`) se inyectan como variables CI/CD protegidas de GitLab y nunca se escriben en el repositorio.
+ 
+### 15.4 Variables CI/CD requeridas en GitLab
+ 
+Para la configuración de las variables CI/CD se usó el flujo de **Settings → CI/CD → Variables** dentro del entorno de Gitlab:
+ 
+| Variable | Descripción | Masked |
+|---|---|---|
+| `REGISTRY_USER` | Usuario de Docker Hub | No |
+| `REGISTRY_PASS` | Token de acceso de Docker Hub (no la contraseña) | Sí |
+ 
+### 15.5 Despliegue en DigitalOcean (Droplet)
+ 
+La imagen publicada en Docker Hub se despliega en un Droplet de DigitalOcean con Ubuntu y Docker instalado. El despliegue se realiza manualmente o puede automatizarse como un stage adicional del pipeline.
+ 
+#### Especificaciones del Droplet
+ 
+| Campo | Valor |
+|---|---|
+| Nombre | `ubuntu-c-4-sfo3-01` |
+| Sistema operativo | Ubuntu 24.04 (LTS) x64 |
+| Memoria RAM | 8 GB |
+| Disco | 50 GB |
+| Región | SFO3 (San Francisco) |
+| IP pública | `64.23.160.162` |
+ 
+#### Requisitos previos
+ 
+- Docker instalado (`sudo apt install docker.io`)
+- Puertos abiertos en el firewall del Droplet: `8501` (Streamlit) y `50051` (gRPC)
+ 
+#### Despliegue manual desde el Droplet
+ 
+```bash
+# Autenticarse en Docker Hub
+echo "$REGISTRY_PASS" | docker login -u "$REGISTRY_USER" --password-stdin
+ 
+# Detener y eliminar contenedores anteriores (si existen)
+docker stop recovery-grpc-server recovery-frontend 2>/dev/null || true
+docker rm   recovery-grpc-server recovery-frontend 2>/dev/null || true
+ 
+# Descargar la imagen publicada por el pipeline
+docker pull adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0
+ 
+# Levantar el servidor gRPC
+docker run -d \
+  --name recovery-grpc-server \
+  --restart unless-stopped \
+  -p 50051:50051 \
+  -e PYTHONUNBUFFERED=1 \
+  adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0 \
+  .venv/bin/python src/grpc_server.py
+ 
+# Esperar a que el servidor esté listo
+sleep 5
+ 
+# Levantar la interfaz Streamlit
+docker run -d \
+  --name recovery-frontend \
+  --restart unless-stopped \
+  -p 8501:8501 \
+  -e GRPC_SERVER_ADDRESS=recovery-grpc-server:50051 \
+  -e PYTHONUNBUFFERED=1 \
+  --link recovery-grpc-server \
+  adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0 \
+  .venv/bin/streamlit run app.py \
+    --server.port=8501 \
+    --server.address=0.0.0.0 \
+    --server.headless=true
+```
+ 
+Una vez levantados, la aplicación estará disponible en `http://64.23.160.162:8501`.
+ 
+#### Verificación del despliegue
+ 
+```bash
+# Ver estado de los contenedores
+docker ps --filter "name=recovery" \
+  --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+ 
+# Ver logs del servidor gRPC
+docker logs recovery-grpc-server --tail 30
+ 
+# Ver logs del frontend
+docker logs recovery-frontend --tail 30
+```
+ 
+### 15.6 Flujo completo del pipeline
+ 
+```
+git push origin main
+        │
+        ▼
+  ┌─────────────┐
+  │  run_test   │  pytest sobre los 6 módulos del proyecto
+  │  (stage:    │  caché de UV por pyproject.toml + uv.lock
+  │   test)     │
+  └──────┬──────┘
+         │ si pasa
+         ▼
+  ┌─────────────┐
+  │ build_image │  docker build con caché en línea desde Docker Hub
+  │  (stage:    │  docker push → grupo2-1.0 + latest
+  │   build)    │
+  └──────┬──────┘
+         │
+         ▼
+  Docker Hub: adrianfvr999/app_physicalrecovery_gitlab
+         │
+         ▼ (despliegue manual)
+  DigitalOcean Droplet → docker run → app en :8501
+```
+---
+
+## 16. Diagrama UML
 
 A continuación se presenta el diagrama UML de la arquitectura modular del sistema, mostrando la organización de los módulos, sus responsabilidades y las dependencias entre componentes. Se ilustra el flujo principal desde la interfaz Streamlit hasta el servidor gRPC, el pipeline de inferencia y la generación del reporte.
 
 <img width="2188" height="1114" alt="UML - App physical recovery (1)" src="https://github.com/user-attachments/assets/42c6cafb-6825-4638-b855-9d3f80949f74" />
 
-## 16. Tablero Kanban
-
+## 17. Tablero Kanban
 
 La gestión de tareas se llevó a cabo con un tablero Kanban que permitió visualizar el flujo de trabajo en columnas de backlog, en progreso y completado. El historial completo de actividades está disponible en: [Tablero Kanban](https://n9.cl/3wu03).
 
 ---
 
-## 17. Uso académico
+## 18. Uso académico
 
 Este proyecto es de uso educativo. No reemplaza la supervisión de un profesional de salud en procesos de rehabilitación física.
 
-## 18. Licencia
+## 19. Licencia
 
 Este proyecto está licenciado bajo la licencia Apache-2.0. Consulte el archivo `LICENSE` para obtener más detalles.
