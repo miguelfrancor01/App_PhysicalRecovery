@@ -564,8 +564,6 @@ Decisiones de configuración relevantes:
 - **`concurrent = 3`**: permite hasta 3 jobs en paralelo en el mismo runner.
 - **`image = "python:3.11-slim"`**: imagen base por defecto para jobs que no especifiquen su propia imagen.
  
-> **Nota de seguridad:** el `token` del runner es una credencial sensible. No debe incluirse en el repositorio. El archivo `config.toml` debe mantenerse fuera del control de versiones (agregar a `.gitignore`).
- 
 ### 15.3 Estructura del pipeline (`.gitlab-ci.yml`)
  
 El pipeline tiene dos stages que se ejecutan secuencialmente en la rama `main`:
