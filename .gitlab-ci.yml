@@ -1,7 +1,8 @@
-# .gitlab-ci.yml - Versión para Runner Local UAO (UAO)
+# .gitlab-ci.yml - Versión para Runner Local u (UAO)
 stages:
   - test
   - build
+  - deploy
 
 variables:
   UV_VERSION: "0.10.9"
@@ -77,3 +78,29 @@ build_image:
     # Hacemos push hacia dockerhub
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:latest
+
+deploy:
+  stage: deploy
+  timeout: 2h
+  tags:
+   - uao-local
+  image: alpine:latest
+  variables:
+    DOCKER_CONTAINER: "app_physicalrecovery_gitlab"
+  before_script:
+   - apk add --no-cache openssh-client
+   - chmod 400 $SSH_PRIVATE_KEY
+  script:
+  - >
+    ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY root@64.23.160.162 "
+    echo \"$REGISTRY_PASS\" | docker login -u \"$REGISTRY_USER\" --password-stdin &&
+    docker pull $IMAGE_NAME:$IMAGE_TAG &&
+    docker rm -f $DOCKER_CONTAINER || true &&
+    docker run -d --name $DOCKER_CONTAINER \
+      -p 80:8501 \
+      -e GRPC_SERVER_ADDRESS='127.0.0.1:50051' \
+      --restart always \
+      $IMAGE_NAME:$IMAGE_TAG \
+      /bin/sh -c '.venv/bin/python src/grpc_server.py & .venv/bin/streamlit run app.py --server.port=8501 --server.address=0.0.0.0'"
+  only:
+   - main
