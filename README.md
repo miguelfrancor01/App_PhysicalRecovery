@@ -680,11 +680,11 @@ Configurar en **Settings → CI/CD → Variables** del repositorio:
 > Usar un **Access Token** de Docker Hub (Account Settings → Security → New Access Token) en lugar de la contraseña directa es una buena práctica: permite revocar el acceso sin cambiar la contraseña de la cuenta.
  
 ### 15.5 Despliegue en DigitalOcean (Droplet)
-
+ 
 La imagen publicada en Docker Hub se despliega en un **Droplet de DigitalOcean** con Ubuntu y Docker instalado. El despliegue se realiza manualmente o puede automatizarse como un stage adicional del pipeline.
-
+ 
 #### Especificaciones del Droplet
-
+ 
 | Campo | Valor |
 |---|---|
 | Nombre | `ubuntu-c-4-sfo3-01` |
@@ -693,24 +693,25 @@ La imagen publicada en Docker Hub se despliega en un **Droplet de DigitalOcean**
 | Disco | 50 GB |
 | Región | SFO3 (San Francisco) |
 | IP pública | `64.23.160.162` |
-
+ 
 #### Requisitos previos
-
+ 
 - Docker instalado (`sudo apt install docker.io`)
 - Puertos abiertos en el firewall del Droplet: `8501` (Streamlit) y `50051` (gRPC)
-
+ 
 #### Despliegue manual desde el Droplet
+ 
 ```bash
 # Autenticarse en Docker Hub
 echo "$REGISTRY_PASS" | docker login -u "$REGISTRY_USER" --password-stdin
-
+ 
 # Detener y eliminar contenedores anteriores (si existen)
 docker stop recovery-grpc-server recovery-frontend 2>/dev/null || true
 docker rm   recovery-grpc-server recovery-frontend 2>/dev/null || true
-
+ 
 # Descargar la imagen publicada por el pipeline
 docker pull adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0
-
+ 
 # Levantar el servidor gRPC
 docker run -d \
   --name recovery-grpc-server \
@@ -719,10 +720,10 @@ docker run -d \
   -e PYTHONUNBUFFERED=1 \
   adrianfvr999/app_physicalrecovery_gitlab:grupo2-1.0 \
   .venv/bin/python src/grpc_server.py
-
+ 
 # Esperar a que el servidor esté listo
 sleep 5
-
+ 
 # Levantar la interfaz Streamlit
 docker run -d \
   --name recovery-frontend \
@@ -736,20 +737,20 @@ docker run -d \
     --server.port=8501 \
     --server.address=0.0.0.0 \
     --server.headless=true
-
-Una vez levantados, la aplicación estará disponible en:
-http://64.23.160.162:8501
 ```
-
+ 
+Una vez levantados, la aplicación estará disponible en `http://64.23.160.162:8501`.
+ 
 #### Verificación del despliegue
+ 
 ```bash
 # Ver estado de los contenedores
 docker ps --filter "name=recovery" \
   --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
+ 
 # Ver logs del servidor gRPC
 docker logs recovery-grpc-server --tail 30
-
+ 
 # Ver logs del frontend
 docker logs recovery-frontend --tail 30
 ```
@@ -779,7 +780,7 @@ git push origin main
          ▼ (despliegue manual)
   DigitalOcean Droplet → docker run → app en :8501
 ```
- 
+
 ---
 
 ## 16. Diagrama UML
