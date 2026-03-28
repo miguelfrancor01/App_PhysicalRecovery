@@ -69,7 +69,7 @@ except ImportError as e:
 # ---------------------------------------------------------------------
 # CONFIGURACIÓN DE LA INTERFAZ
 # ---------------------------------------------------------------------
-st.set_page_config(page_title="App Physical Recovery UAO-DEVS", layout="wide")
+st.set_page_config(page_title="App Physical Recovery UAO-DEVelopers", layout="wide")
 
 if "fase" not in st.session_state:
     st.session_state.fase = "config"
