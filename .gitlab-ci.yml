@@ -95,7 +95,7 @@ deploy:
   - >
     ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY root@64.23.160.162 "
     echo \"$REGISTRY_PASS\" | docker login -u \"$REGISTRY_USER\" --password-stdin &&
-    docker pull $IMAGE_NAME:latest &&
+    docker pull $IMAGE_NAME:latest  &&
     docker rm -f $DOCKER_CONTAINER || true &&
     docker run -d --name $DOCKER_CONTAINER \
       -p 80:8501 \

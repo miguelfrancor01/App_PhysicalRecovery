@@ -69,7 +69,7 @@ except ImportError as e:
 # ---------------------------------------------------------------------
 # CONFIGURACIÓN DE LA INTERFAZ
 # ---------------------------------------------------------------------
-st.set_page_config(page_title="App Physical Recovery UAO-DEVelopers", layout="wide")
+st.set_page_config(page_title="App Physical Recovery", layout="wide")
 
 if "fase" not in st.session_state:
     st.session_state.fase = "config"
@@ -83,7 +83,7 @@ if "pdf_path" not in st.session_state:
 if "exercise_results" not in st.session_state:
     st.session_state.exercise_results = None
 
-st.title("App Physical Recovery")
+st.title("App Physical Recovery  UAO-DEVelopers")
 st.markdown("### Sistema de análisis de pose ViTPose con gRPC")
 
 # ---------------------------------------------------------------------
