@@ -75,7 +75,7 @@ build_image:
       -t $IMAGE_NAME:$IMAGE_TAG
       -t $IMAGE_NAME:latest
       .
-    # Hacemos push hacia dockerhub
+    # Hacemos  push hacia dockerhub
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:latest
 
